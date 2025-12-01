@@ -46,7 +46,6 @@ class DatasetArgs:
     """dataset style: generic | long_cp | wide (queue-free enforced for long_cp/wide)"""
     gnp_p: float | None = None
     """optional fixed p for G(n,p); if set with style=long_cp|wide, it pins the style to this p (p_range=(p,p))."""
-    req_divisor: int = 20
 
 
 def main(args: DatasetArgs):
@@ -103,7 +102,6 @@ def main(args: DatasetArgs):
             max_task_length=args.max_task_length,
             task_arrival=args.task_arrival,
             arrival_rate=args.arrival_rate,
-            req_divisor=int(args.req_divisor),
         )
 
     json_data = json.dumps(dataset.to_json())

@@ -75,7 +75,7 @@ class Args:
     env_mode: str = "async"
 
     # TensorBoard logging control (similar to train.py)
-    no_tensorboard: bool = False
+    no_tensorboard: bool = True
     # Generate offline plots from CSV metrics after training completes
     offline_plots_after_training: bool = True
     # Logging cadence controls (iterations)
@@ -164,6 +164,10 @@ class Args:
     longcp_config: str | None = None
     # Optional: use a fixed dataset (JSON with {"workflows": [...]}) for training envs
     dataset_json: str | None = None
+
+    # Queue regime: optional divisor (1/alpha). If set, envs will generate datasets with this req_divisor
+    # regardless of style, using the generic generator (gnp params still honored)
+    dataset_req_divisor: int | None = None
 
 
 
@@ -490,6 +494,13 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
             task_arrival=str(ds.get('task_arrival', args.dataset.task_arrival)),
             arrival_rate=float(ds.get('arrival_rate', args.dataset.arrival_rate)),
         )
+        # Apply global req_divisor override if requested at top level
+        try:
+            req_div = getattr(args, 'dataset_req_divisor', None)
+        except Exception:
+            req_div = None
+        if req_div is not None and ds_args is not None:
+            ds_args = _dc_replace(ds_args, req_divisor=int(req_div))
         return seeds, ds_args
 
     seeds_wide_set, ds_wide = _load_rl_cfg(getattr(args, 'wide_config', None))
@@ -547,9 +558,23 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
             else:
                 # default fallback
                 pass
+            # If a global dataset_req_divisor is provided, enforce on per-env dataset
+            try:
+                req_div = getattr(args, 'dataset_req_divisor', None)
+            except Exception:
+                req_div = None
+            if req_div is not None:
+                args_i.dataset = _dc_replace(args_i.dataset, req_divisor=int(req_div))
             envs_args.append(args_i)
     else:
         env_domains = ['default'] * int(args.num_envs)
+        # If requested, override dataset.req_divisor on the base args before replication
+        try:
+            req_div = getattr(args, 'dataset_req_divisor', None)
+        except Exception:
+            req_div = None
+        if req_div is not None:
+            args.dataset = _dc_replace(args.dataset, req_divisor=int(req_div))
         envs_args = [args] * int(args.num_envs)
 
     if getattr(args, 'dataset_json', None):
