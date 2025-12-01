@@ -1,0 +1,37 @@
+{
+  "train": {
+    "num_envs": 100,
+    "dataset": {
+      "style": "long_cp",
+      "gnp_p": 0.8,
+      "dag_method": "gnp",
+      "host_count": 4,
+      "vm_count": 10,
+      "workflow_count": 1,
+      "gnp_min_n": 20,
+      "gnp_max_n": 40,
+      "task_length_dist": "normal",
+      "min_task_length": 500,
+      "max_task_length": 100000,
+      "task_arrival": "static",
+      "arrival_rate": 3
+    }
+  },
+  "eval": {
+    "dataset": {
+      "style": "long_cp",
+      "gnp_p": 0.8,
+      "dag_method": "gnp",
+      "host_count": 4,
+      "vm_count": 10,
+      "workflow_count": 1,
+      "gnp_min_n": 20,
+      "gnp_max_n": 40,
+      "task_length_dist": "normal",
+      "min_task_length": 500,
+      "max_task_length": 100000,
+      "task_arrival": "static",
+      "arrival_rate": 3
+    }
+  }
+}

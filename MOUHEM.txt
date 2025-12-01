@@ -1,0 +1,9 @@
+WORKING ,
+
+optimizing makespan,energy
+
+the only problem is that :
+ we are using an ENTIRE VM to task
+
+
+ tasks cpu are really low to avoid NOT POSSIBLE ALLOCATIONS

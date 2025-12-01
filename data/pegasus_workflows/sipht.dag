@@ -1,0 +1,174 @@
+######################################################################
+# PEGASUS WMS GENERATED DAG FILE
+# DAG sipht
+# Index = 0, Count = 1
+######################################################################
+
+JOB create_dir_sipht_0_wisc_bio create_dir_sipht_0_wisc_bio.sub
+RETRY create_dir_sipht_0_wisc_bio 3
+
+JOB Findterm_ID000001 Findterm_ID000001.sub
+RETRY Findterm_ID000001 3
+
+JOB Blast_ID000023 Blast_ID000023.sub
+RETRY Blast_ID000023 3
+
+JOB RNAMotif_ID000002 RNAMotif_ID000002.sub
+RETRY RNAMotif_ID000002 3
+
+JOB Patser_ID000012 Patser_ID000012.sub
+RETRY Patser_ID000012 3
+
+JOB Patser_ID000013 Patser_ID000013.sub
+RETRY Patser_ID000013 3
+
+JOB Patser_ID000010 Patser_ID000010.sub
+RETRY Patser_ID000010 3
+
+JOB Transterm_ID000003 Transterm_ID000003.sub
+RETRY Transterm_ID000003 3
+
+JOB Patser_ID000022 Patser_ID000022.sub
+RETRY Patser_ID000022 3
+
+JOB Patser_ID000011 Patser_ID000011.sub
+RETRY Patser_ID000011 3
+
+JOB Patser_ID000021 Patser_ID000021.sub
+RETRY Patser_ID000021 3
+
+JOB Patser_ID000020 Patser_ID000020.sub
+RETRY Patser_ID000020 3
+
+JOB Patser_ID000009 Patser_ID000009.sub
+RETRY Patser_ID000009 3
+
+JOB Patser_ID000008 Patser_ID000008.sub
+RETRY Patser_ID000008 3
+
+JOB Patser_ID000018 Patser_ID000018.sub
+RETRY Patser_ID000018 3
+
+JOB Patser_ID000007 Patser_ID000007.sub
+RETRY Patser_ID000007 3
+
+JOB Patser_ID000019 Patser_ID000019.sub
+RETRY Patser_ID000019 3
+
+JOB Patser_ID000006 Patser_ID000006.sub
+RETRY Patser_ID000006 3
+
+JOB Patser_ID000016 Patser_ID000016.sub
+RETRY Patser_ID000016 3
+
+JOB Patser_ID000005 Patser_ID000005.sub
+RETRY Patser_ID000005 3
+
+JOB Patser_ID000017 Patser_ID000017.sub
+RETRY Patser_ID000017 3
+
+JOB Patser_ID000004 Patser_ID000004.sub
+RETRY Patser_ID000004 3
+
+JOB Patser_ID000014 Patser_ID000014.sub
+RETRY Patser_ID000014 3
+
+JOB Patser_ID000015 Patser_ID000015.sub
+RETRY Patser_ID000015 3
+
+JOB SRNA_ID000029 SRNA_ID000029.sub
+RETRY SRNA_ID000029 3
+
+JOB Patser_concate_ID000031 Patser_concate_ID000031.sub
+RETRY Patser_concate_ID000031 3
+
+JOB Blast_candidate_ID000024 Blast_candidate_ID000024.sub
+RETRY Blast_candidate_ID000024 3
+
+JOB Blast_QRNA_ID000025 Blast_QRNA_ID000025.sub
+RETRY Blast_QRNA_ID000025 3
+
+JOB FFN_parse_ID000026 FFN_parse_ID000026.sub
+RETRY FFN_parse_ID000026 3
+
+JOB Blast_paralogues_ID000028 Blast_paralogues_ID000028.sub
+RETRY Blast_paralogues_ID000028 3
+
+JOB Blast_synteny_ID000027 Blast_synteny_ID000027.sub
+RETRY Blast_synteny_ID000027 3
+
+JOB SRNA_annotate_ID000030 SRNA_annotate_ID000030.sub
+RETRY SRNA_annotate_ID000030 3
+
+JOB stage_out_local_SRNA_annotate_ID000030_0 stage_out_local_SRNA_annotate_ID000030_0.sub
+RETRY stage_out_local_SRNA_annotate_ID000030_0 3
+
+PARENT Blast_QRNA_ID000025 CHILD SRNA_annotate_ID000030
+PARENT Findterm_ID000001 CHILD SRNA_ID000029
+PARENT Blast_ID000023 CHILD SRNA_ID000029
+PARENT SRNA_ID000029 CHILD Blast_candidate_ID000024
+PARENT SRNA_ID000029 CHILD Blast_QRNA_ID000025
+PARENT SRNA_ID000029 CHILD FFN_parse_ID000026
+PARENT SRNA_ID000029 CHILD Blast_paralogues_ID000028
+PARENT SRNA_ID000029 CHILD SRNA_annotate_ID000030
+PARENT Patser_concate_ID000031 CHILD SRNA_annotate_ID000030
+PARENT RNAMotif_ID000002 CHILD SRNA_ID000029
+PARENT Blast_paralogues_ID000028 CHILD SRNA_annotate_ID000030
+PARENT Patser_ID000012 CHILD Patser_concate_ID000031
+PARENT Patser_ID000013 CHILD Patser_concate_ID000031
+PARENT Blast_candidate_ID000024 CHILD SRNA_annotate_ID000030
+PARENT Patser_ID000010 CHILD Patser_concate_ID000031
+PARENT Transterm_ID000003 CHILD SRNA_ID000029
+PARENT Patser_ID000022 CHILD Patser_concate_ID000031
+PARENT Patser_ID000011 CHILD Patser_concate_ID000031
+PARENT Patser_ID000021 CHILD Patser_concate_ID000031
+PARENT Patser_ID000020 CHILD Patser_concate_ID000031
+PARENT FFN_parse_ID000026 CHILD Blast_synteny_ID000027
+PARENT Patser_ID000009 CHILD Patser_concate_ID000031
+PARENT Patser_ID000008 CHILD Patser_concate_ID000031
+PARENT Patser_ID000018 CHILD Patser_concate_ID000031
+PARENT Patser_ID000007 CHILD Patser_concate_ID000031
+PARENT Patser_ID000019 CHILD Patser_concate_ID000031
+PARENT Blast_synteny_ID000027 CHILD SRNA_annotate_ID000030
+PARENT Patser_ID000006 CHILD Patser_concate_ID000031
+PARENT Patser_ID000016 CHILD Patser_concate_ID000031
+PARENT Patser_ID000005 CHILD Patser_concate_ID000031
+PARENT Patser_ID000017 CHILD Patser_concate_ID000031
+PARENT Patser_ID000004 CHILD Patser_concate_ID000031
+PARENT Patser_ID000014 CHILD Patser_concate_ID000031
+PARENT Patser_ID000015 CHILD Patser_concate_ID000031
+PARENT SRNA_annotate_ID000030 CHILD stage_out_local_SRNA_annotate_ID000030_0
+PARENT create_dir_sipht_0_wisc_bio CHILD SRNA_annotate_ID000030
+PARENT create_dir_sipht_0_wisc_bio CHILD Blast_QRNA_ID000025
+PARENT create_dir_sipht_0_wisc_bio CHILD Findterm_ID000001
+PARENT create_dir_sipht_0_wisc_bio CHILD Blast_ID000023
+PARENT create_dir_sipht_0_wisc_bio CHILD SRNA_ID000029
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_concate_ID000031
+PARENT create_dir_sipht_0_wisc_bio CHILD RNAMotif_ID000002
+PARENT create_dir_sipht_0_wisc_bio CHILD Blast_paralogues_ID000028
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000012
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000013
+PARENT create_dir_sipht_0_wisc_bio CHILD Blast_candidate_ID000024
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000010
+PARENT create_dir_sipht_0_wisc_bio CHILD Transterm_ID000003
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000022
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000011
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000021
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000020
+PARENT create_dir_sipht_0_wisc_bio CHILD FFN_parse_ID000026
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000009
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000008
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000018
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000007
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000019
+PARENT create_dir_sipht_0_wisc_bio CHILD Blast_synteny_ID000027
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000006
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000016
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000005
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000017
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000004
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000014
+PARENT create_dir_sipht_0_wisc_bio CHILD Patser_ID000015
+######################################################################
+# End of DAG
+######################################################################

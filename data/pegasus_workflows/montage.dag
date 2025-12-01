@@ -1,0 +1,369 @@
+######################################################################
+# PEGASUS WMS GENERATED DAG FILE
+# DAG montage
+# Index = 0, Count = 1
+######################################################################
+MAXJOBS registration 1
+
+JOB stage_worker_local_montage_0_local stage_worker_local_montage_0_local.sub
+RETRY stage_worker_local_montage_0_local 3
+
+JOB create_dir_montage_0_local create_dir_montage_0_local.sub
+RETRY create_dir_montage_0_local 3
+
+JOB stage_in_remote_local_0 stage_in_remote_local_0.sub
+SCRIPT POST stage_in_remote_local_0 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/stage_in_remote_local_0.out
+RETRY stage_in_remote_local_0 3
+
+JOB stage_in_remote_local_1 stage_in_remote_local_1.sub
+SCRIPT POST stage_in_remote_local_1 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/stage_in_remote_local_1.out
+RETRY stage_in_remote_local_1 3
+
+JOB stage_in_remote_local_2 stage_in_remote_local_2.sub
+SCRIPT POST stage_in_remote_local_2 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/stage_in_remote_local_2.out
+RETRY stage_in_remote_local_2 3
+
+JOB stage_in_remote_local_3 stage_in_remote_local_3.sub
+SCRIPT POST stage_in_remote_local_3 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/stage_in_remote_local_3.out
+RETRY stage_in_remote_local_3 3
+
+JOB merge_mProjectPP-3.3_PID1_ID5 merge_mProjectPP-3.3_PID1_ID5.sub
+SCRIPT POST merge_mProjectPP-3.3_PID1_ID5 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mProjectPP-3.3_PID1_ID5.out
+RETRY merge_mProjectPP-3.3_PID1_ID5 3
+
+JOB merge_mProjectPP-3.3_PID1_ID4 merge_mProjectPP-3.3_PID1_ID4.sub
+SCRIPT POST merge_mProjectPP-3.3_PID1_ID4 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mProjectPP-3.3_PID1_ID4.out
+RETRY merge_mProjectPP-3.3_PID1_ID4 3
+
+JOB merge_mProjectPP-3.3_PID1_ID3 merge_mProjectPP-3.3_PID1_ID3.sub
+SCRIPT POST merge_mProjectPP-3.3_PID1_ID3 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mProjectPP-3.3_PID1_ID3.out
+RETRY merge_mProjectPP-3.3_PID1_ID3 3
+
+JOB merge_mProjectPP-3.3_PID1_ID1 merge_mProjectPP-3.3_PID1_ID1.sub
+SCRIPT POST merge_mProjectPP-3.3_PID1_ID1 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mProjectPP-3.3_PID1_ID1.out
+RETRY merge_mProjectPP-3.3_PID1_ID1 3
+
+JOB merge_mProjectPP-3.3_PID1_ID2 merge_mProjectPP-3.3_PID1_ID2.sub
+SCRIPT POST merge_mProjectPP-3.3_PID1_ID2 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mProjectPP-3.3_PID1_ID2.out
+RETRY merge_mProjectPP-3.3_PID1_ID2 3
+
+JOB merge_mDiffFit-3.3_PID2_ID1 merge_mDiffFit-3.3_PID2_ID1.sub
+SCRIPT POST merge_mDiffFit-3.3_PID2_ID1 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mDiffFit-3.3_PID2_ID1.out
+RETRY merge_mDiffFit-3.3_PID2_ID1 3
+
+JOB merge_mDiffFit-3.3_PID2_ID7 merge_mDiffFit-3.3_PID2_ID7.sub
+SCRIPT POST merge_mDiffFit-3.3_PID2_ID7 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mDiffFit-3.3_PID2_ID7.out
+RETRY merge_mDiffFit-3.3_PID2_ID7 3
+
+JOB merge_mDiffFit-3.3_PID2_ID6 merge_mDiffFit-3.3_PID2_ID6.sub
+SCRIPT POST merge_mDiffFit-3.3_PID2_ID6 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mDiffFit-3.3_PID2_ID6.out
+RETRY merge_mDiffFit-3.3_PID2_ID6 3
+
+JOB merge_mDiffFit-3.3_PID2_ID3 merge_mDiffFit-3.3_PID2_ID3.sub
+SCRIPT POST merge_mDiffFit-3.3_PID2_ID3 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mDiffFit-3.3_PID2_ID3.out
+RETRY merge_mDiffFit-3.3_PID2_ID3 3
+
+JOB merge_mDiffFit-3.3_PID2_ID4 merge_mDiffFit-3.3_PID2_ID4.sub
+SCRIPT POST merge_mDiffFit-3.3_PID2_ID4 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mDiffFit-3.3_PID2_ID4.out
+RETRY merge_mDiffFit-3.3_PID2_ID4 3
+
+JOB merge_mDiffFit-3.3_PID2_ID10 merge_mDiffFit-3.3_PID2_ID10.sub
+SCRIPT POST merge_mDiffFit-3.3_PID2_ID10 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mDiffFit-3.3_PID2_ID10.out
+RETRY merge_mDiffFit-3.3_PID2_ID10 3
+
+JOB merge_mDiffFit-3.3_PID2_ID11 merge_mDiffFit-3.3_PID2_ID11.sub
+SCRIPT POST merge_mDiffFit-3.3_PID2_ID11 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mDiffFit-3.3_PID2_ID11.out
+RETRY merge_mDiffFit-3.3_PID2_ID11 3
+
+JOB merge_mDiffFit-3.3_PID2_ID9 merge_mDiffFit-3.3_PID2_ID9.sub
+SCRIPT POST merge_mDiffFit-3.3_PID2_ID9 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mDiffFit-3.3_PID2_ID9.out
+RETRY merge_mDiffFit-3.3_PID2_ID9 3
+
+JOB merge_mDiffFit-3.3_PID2_ID5 merge_mDiffFit-3.3_PID2_ID5.sub
+SCRIPT POST merge_mDiffFit-3.3_PID2_ID5 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mDiffFit-3.3_PID2_ID5.out
+RETRY merge_mDiffFit-3.3_PID2_ID5 3
+
+JOB merge_mDiffFit-3.3_PID2_ID2 merge_mDiffFit-3.3_PID2_ID2.sub
+SCRIPT POST merge_mDiffFit-3.3_PID2_ID2 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mDiffFit-3.3_PID2_ID2.out
+RETRY merge_mDiffFit-3.3_PID2_ID2 3
+
+JOB merge_mDiffFit-3.3_PID2_ID8 merge_mDiffFit-3.3_PID2_ID8.sub
+SCRIPT POST merge_mDiffFit-3.3_PID2_ID8 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mDiffFit-3.3_PID2_ID8.out
+RETRY merge_mDiffFit-3.3_PID2_ID8 3
+
+JOB mConcatFit_ID000298 mConcatFit_ID000298.sub
+SCRIPT POST mConcatFit_ID000298 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/mConcatFit_ID000298.out
+RETRY mConcatFit_ID000298 3
+
+JOB mBgModel_ID000299 mBgModel_ID000299.sub
+SCRIPT POST mBgModel_ID000299 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/mBgModel_ID000299.out
+RETRY mBgModel_ID000299 3
+
+JOB merge_mBackground-3.3_PID5_ID1 merge_mBackground-3.3_PID5_ID1.sub
+SCRIPT POST merge_mBackground-3.3_PID5_ID1 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mBackground-3.3_PID5_ID1.out
+RETRY merge_mBackground-3.3_PID5_ID1 3
+
+JOB merge_mBackground-3.3_PID5_ID2 merge_mBackground-3.3_PID5_ID2.sub
+SCRIPT POST merge_mBackground-3.3_PID5_ID2 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mBackground-3.3_PID5_ID2.out
+RETRY merge_mBackground-3.3_PID5_ID2 3
+
+JOB merge_mBackground-3.3_PID5_ID3 merge_mBackground-3.3_PID5_ID3.sub
+SCRIPT POST merge_mBackground-3.3_PID5_ID3 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mBackground-3.3_PID5_ID3.out
+RETRY merge_mBackground-3.3_PID5_ID3 3
+
+JOB merge_mBackground-3.3_PID5_ID4 merge_mBackground-3.3_PID5_ID4.sub
+SCRIPT POST merge_mBackground-3.3_PID5_ID4 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mBackground-3.3_PID5_ID4.out
+RETRY merge_mBackground-3.3_PID5_ID4 3
+
+JOB merge_mBackground-3.3_PID5_ID5 merge_mBackground-3.3_PID5_ID5.sub
+SCRIPT POST merge_mBackground-3.3_PID5_ID5 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/merge_mBackground-3.3_PID5_ID5.out
+RETRY merge_mBackground-3.3_PID5_ID5 3
+
+JOB mImgtbl_ID000384 mImgtbl_ID000384.sub
+SCRIPT POST mImgtbl_ID000384 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/mImgtbl_ID000384.out
+RETRY mImgtbl_ID000384 3
+
+JOB mAdd_ID000385 mAdd_ID000385.sub
+SCRIPT POST mAdd_ID000385 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/mAdd_ID000385.out
+RETRY mAdd_ID000385 3
+
+JOB mShrink_ID000386 mShrink_ID000386.sub
+SCRIPT POST mShrink_ID000386 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/mShrink_ID000386.out
+RETRY mShrink_ID000386 3
+
+JOB stage_out_remote_local_6_0 stage_out_remote_local_6_0.sub
+SCRIPT POST stage_out_remote_local_6_0 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/stage_out_remote_local_6_0.out
+RETRY stage_out_remote_local_6_0 3
+
+JOB mJPEG_ID000387 mJPEG_ID000387.sub
+SCRIPT POST mJPEG_ID000387 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/mJPEG_ID000387.out
+RETRY mJPEG_ID000387 3
+
+JOB stage_out_remote_local_7_0 stage_out_remote_local_7_0.sub
+SCRIPT POST stage_out_remote_local_7_0 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/stage_out_remote_local_7_0.out
+RETRY stage_out_remote_local_7_0 3
+
+JOB register_local_6_0 register_local_6_0.sub
+SCRIPT POST register_local_6_0 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/register_local_6_0.out
+RETRY register_local_6_0 3
+CATEGORY register_local_6_0 registration
+
+JOB stage_out_remote_local_8_0 stage_out_remote_local_8_0.sub
+SCRIPT POST stage_out_remote_local_8_0 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/stage_out_remote_local_8_0.out
+RETRY stage_out_remote_local_8_0 3
+
+JOB register_local_7_0 register_local_7_0.sub
+SCRIPT POST register_local_7_0 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/register_local_7_0.out
+RETRY register_local_7_0 3
+CATEGORY register_local_7_0 registration
+
+JOB register_local_8_0 register_local_8_0.sub
+SCRIPT POST register_local_8_0 /usr/bin/pegasus-exitcode   /data/scratch/vahi/work/stampede/futuregrid/montage/work/1.0/2012-06-14_120047/work/vahi/pegasus/montage/run0001/register_local_8_0.out
+RETRY register_local_8_0 3
+CATEGORY register_local_8_0 registration
+
+PARENT merge_mBackground-3.3_PID5_ID5 CHILD mImgtbl_ID000384
+PARENT merge_mBackground-3.3_PID5_ID5 CHILD mAdd_ID000385
+PARENT merge_mDiffFit-3.3_PID2_ID7 CHILD mConcatFit_ID000298
+PARENT merge_mBackground-3.3_PID5_ID4 CHILD mImgtbl_ID000384
+PARENT merge_mBackground-3.3_PID5_ID4 CHILD mAdd_ID000385
+PARENT merge_mDiffFit-3.3_PID2_ID8 CHILD mConcatFit_ID000298
+PARENT merge_mDiffFit-3.3_PID2_ID5 CHILD mConcatFit_ID000298
+PARENT merge_mDiffFit-3.3_PID2_ID6 CHILD mConcatFit_ID000298
+PARENT merge_mBackground-3.3_PID5_ID1 CHILD mImgtbl_ID000384
+PARENT merge_mBackground-3.3_PID5_ID1 CHILD mAdd_ID000385
+PARENT mBgModel_ID000299 CHILD merge_mBackground-3.3_PID5_ID1
+PARENT mBgModel_ID000299 CHILD merge_mBackground-3.3_PID5_ID2
+PARENT mBgModel_ID000299 CHILD merge_mBackground-3.3_PID5_ID3
+PARENT mBgModel_ID000299 CHILD merge_mBackground-3.3_PID5_ID4
+PARENT mBgModel_ID000299 CHILD merge_mBackground-3.3_PID5_ID5
+PARENT merge_mDiffFit-3.3_PID2_ID9 CHILD mConcatFit_ID000298
+PARENT merge_mBackground-3.3_PID5_ID3 CHILD mImgtbl_ID000384
+PARENT merge_mBackground-3.3_PID5_ID3 CHILD mAdd_ID000385
+PARENT merge_mBackground-3.3_PID5_ID2 CHILD mImgtbl_ID000384
+PARENT merge_mBackground-3.3_PID5_ID2 CHILD mAdd_ID000385
+PARENT merge_mProjectPP-3.3_PID1_ID5 CHILD merge_mDiffFit-3.3_PID2_ID11
+PARENT merge_mProjectPP-3.3_PID1_ID5 CHILD merge_mBackground-3.3_PID5_ID3
+PARENT merge_mProjectPP-3.3_PID1_ID4 CHILD merge_mDiffFit-3.3_PID2_ID7
+PARENT merge_mProjectPP-3.3_PID1_ID4 CHILD merge_mBackground-3.3_PID5_ID2
+PARENT merge_mProjectPP-3.3_PID1_ID4 CHILD merge_mDiffFit-3.3_PID2_ID10
+PARENT merge_mProjectPP-3.3_PID1_ID4 CHILD merge_mDiffFit-3.3_PID2_ID9
+PARENT merge_mProjectPP-3.3_PID1_ID4 CHILD merge_mBackground-3.3_PID5_ID3
+PARENT merge_mProjectPP-3.3_PID1_ID4 CHILD merge_mDiffFit-3.3_PID2_ID11
+PARENT merge_mProjectPP-3.3_PID1_ID4 CHILD merge_mDiffFit-3.3_PID2_ID8
+PARENT merge_mProjectPP-3.3_PID1_ID4 CHILD merge_mBackground-3.3_PID5_ID4
+PARENT merge_mProjectPP-3.3_PID1_ID3 CHILD merge_mDiffFit-3.3_PID2_ID6
+PARENT merge_mProjectPP-3.3_PID1_ID3 CHILD merge_mDiffFit-3.3_PID2_ID7
+PARENT merge_mProjectPP-3.3_PID1_ID3 CHILD merge_mBackground-3.3_PID5_ID1
+PARENT merge_mProjectPP-3.3_PID1_ID3 CHILD merge_mDiffFit-3.3_PID2_ID5
+PARENT merge_mProjectPP-3.3_PID1_ID3 CHILD merge_mDiffFit-3.3_PID2_ID10
+PARENT merge_mProjectPP-3.3_PID1_ID3 CHILD merge_mBackground-3.3_PID5_ID2
+PARENT merge_mProjectPP-3.3_PID1_ID3 CHILD merge_mDiffFit-3.3_PID2_ID4
+PARENT merge_mProjectPP-3.3_PID1_ID3 CHILD merge_mDiffFit-3.3_PID2_ID8
+PARENT merge_mProjectPP-3.3_PID1_ID3 CHILD merge_mDiffFit-3.3_PID2_ID9
+PARENT merge_mProjectPP-3.3_PID1_ID3 CHILD merge_mBackground-3.3_PID5_ID3
+PARENT stage_worker_local_montage_0_local CHILD stage_in_remote_local_0
+PARENT stage_worker_local_montage_0_local CHILD stage_in_remote_local_1
+PARENT stage_worker_local_montage_0_local CHILD stage_in_remote_local_2
+PARENT stage_worker_local_montage_0_local CHILD stage_in_remote_local_3
+PARENT mJPEG_ID000387 CHILD stage_out_remote_local_8_0
+PARENT stage_out_remote_local_8_0 CHILD register_local_8_0
+PARENT stage_in_remote_local_0 CHILD merge_mDiffFit-3.3_PID2_ID7
+PARENT stage_in_remote_local_0 CHILD merge_mBackground-3.3_PID5_ID5
+PARENT stage_in_remote_local_0 CHILD merge_mDiffFit-3.3_PID2_ID8
+PARENT stage_in_remote_local_0 CHILD merge_mBackground-3.3_PID5_ID4
+PARENT stage_in_remote_local_0 CHILD merge_mDiffFit-3.3_PID2_ID5
+PARENT stage_in_remote_local_0 CHILD merge_mDiffFit-3.3_PID2_ID6
+PARENT stage_in_remote_local_0 CHILD merge_mBackground-3.3_PID5_ID1
+PARENT stage_in_remote_local_0 CHILD mBgModel_ID000299
+PARENT stage_in_remote_local_0 CHILD merge_mDiffFit-3.3_PID2_ID9
+PARENT stage_in_remote_local_0 CHILD merge_mBackground-3.3_PID5_ID3
+PARENT stage_in_remote_local_0 CHILD merge_mBackground-3.3_PID5_ID2
+PARENT stage_in_remote_local_0 CHILD merge_mProjectPP-3.3_PID1_ID5
+PARENT stage_in_remote_local_0 CHILD merge_mProjectPP-3.3_PID1_ID4
+PARENT stage_in_remote_local_0 CHILD merge_mProjectPP-3.3_PID1_ID3
+PARENT stage_in_remote_local_0 CHILD merge_mDiffFit-3.3_PID2_ID4
+PARENT stage_in_remote_local_0 CHILD merge_mDiffFit-3.3_PID2_ID3
+PARENT stage_in_remote_local_0 CHILD merge_mDiffFit-3.3_PID2_ID2
+PARENT stage_in_remote_local_0 CHILD merge_mDiffFit-3.3_PID2_ID1
+PARENT stage_in_remote_local_0 CHILD merge_mDiffFit-3.3_PID2_ID11
+PARENT stage_in_remote_local_0 CHILD merge_mDiffFit-3.3_PID2_ID10
+PARENT stage_in_remote_local_0 CHILD mAdd_ID000385
+PARENT stage_in_remote_local_0 CHILD merge_mProjectPP-3.3_PID1_ID1
+PARENT stage_in_remote_local_0 CHILD merge_mProjectPP-3.3_PID1_ID2
+PARENT merge_mDiffFit-3.3_PID2_ID4 CHILD mConcatFit_ID000298
+PARENT stage_in_remote_local_1 CHILD merge_mDiffFit-3.3_PID2_ID7
+PARENT stage_in_remote_local_1 CHILD merge_mBackground-3.3_PID5_ID5
+PARENT stage_in_remote_local_1 CHILD merge_mDiffFit-3.3_PID2_ID8
+PARENT stage_in_remote_local_1 CHILD merge_mBackground-3.3_PID5_ID4
+PARENT stage_in_remote_local_1 CHILD merge_mDiffFit-3.3_PID2_ID5
+PARENT stage_in_remote_local_1 CHILD merge_mDiffFit-3.3_PID2_ID6
+PARENT stage_in_remote_local_1 CHILD merge_mBackground-3.3_PID5_ID1
+PARENT stage_in_remote_local_1 CHILD merge_mDiffFit-3.3_PID2_ID9
+PARENT stage_in_remote_local_1 CHILD merge_mBackground-3.3_PID5_ID3
+PARENT stage_in_remote_local_1 CHILD merge_mBackground-3.3_PID5_ID2
+PARENT stage_in_remote_local_1 CHILD merge_mProjectPP-3.3_PID1_ID5
+PARENT stage_in_remote_local_1 CHILD merge_mProjectPP-3.3_PID1_ID4
+PARENT stage_in_remote_local_1 CHILD merge_mProjectPP-3.3_PID1_ID3
+PARENT stage_in_remote_local_1 CHILD merge_mDiffFit-3.3_PID2_ID4
+PARENT stage_in_remote_local_1 CHILD merge_mDiffFit-3.3_PID2_ID3
+PARENT stage_in_remote_local_1 CHILD merge_mDiffFit-3.3_PID2_ID2
+PARENT stage_in_remote_local_1 CHILD merge_mDiffFit-3.3_PID2_ID1
+PARENT stage_in_remote_local_1 CHILD merge_mDiffFit-3.3_PID2_ID11
+PARENT stage_in_remote_local_1 CHILD merge_mDiffFit-3.3_PID2_ID10
+PARENT stage_in_remote_local_1 CHILD mAdd_ID000385
+PARENT stage_in_remote_local_1 CHILD merge_mProjectPP-3.3_PID1_ID1
+PARENT stage_in_remote_local_1 CHILD mConcatFit_ID000298
+PARENT stage_in_remote_local_1 CHILD merge_mProjectPP-3.3_PID1_ID2
+PARENT merge_mDiffFit-3.3_PID2_ID3 CHILD mConcatFit_ID000298
+PARENT stage_in_remote_local_2 CHILD merge_mDiffFit-3.3_PID2_ID7
+PARENT stage_in_remote_local_2 CHILD merge_mDiffFit-3.3_PID2_ID8
+PARENT stage_in_remote_local_2 CHILD merge_mDiffFit-3.3_PID2_ID5
+PARENT stage_in_remote_local_2 CHILD merge_mDiffFit-3.3_PID2_ID6
+PARENT stage_in_remote_local_2 CHILD merge_mDiffFit-3.3_PID2_ID9
+PARENT stage_in_remote_local_2 CHILD merge_mProjectPP-3.3_PID1_ID5
+PARENT stage_in_remote_local_2 CHILD merge_mProjectPP-3.3_PID1_ID4
+PARENT stage_in_remote_local_2 CHILD merge_mProjectPP-3.3_PID1_ID3
+PARENT stage_in_remote_local_2 CHILD merge_mDiffFit-3.3_PID2_ID4
+PARENT stage_in_remote_local_2 CHILD merge_mDiffFit-3.3_PID2_ID3
+PARENT stage_in_remote_local_2 CHILD merge_mDiffFit-3.3_PID2_ID2
+PARENT stage_in_remote_local_2 CHILD merge_mDiffFit-3.3_PID2_ID1
+PARENT stage_in_remote_local_2 CHILD merge_mDiffFit-3.3_PID2_ID11
+PARENT stage_in_remote_local_2 CHILD merge_mDiffFit-3.3_PID2_ID10
+PARENT stage_in_remote_local_2 CHILD mImgtbl_ID000384
+PARENT stage_in_remote_local_2 CHILD merge_mProjectPP-3.3_PID1_ID1
+PARENT stage_in_remote_local_2 CHILD mConcatFit_ID000298
+PARENT stage_in_remote_local_2 CHILD merge_mProjectPP-3.3_PID1_ID2
+PARENT stage_in_remote_local_2 CHILD mShrink_ID000386
+PARENT merge_mDiffFit-3.3_PID2_ID2 CHILD mConcatFit_ID000298
+PARENT stage_in_remote_local_3 CHILD merge_mDiffFit-3.3_PID2_ID7
+PARENT stage_in_remote_local_3 CHILD merge_mDiffFit-3.3_PID2_ID8
+PARENT stage_in_remote_local_3 CHILD merge_mDiffFit-3.3_PID2_ID5
+PARENT stage_in_remote_local_3 CHILD merge_mDiffFit-3.3_PID2_ID6
+PARENT stage_in_remote_local_3 CHILD mBgModel_ID000299
+PARENT stage_in_remote_local_3 CHILD merge_mDiffFit-3.3_PID2_ID9
+PARENT stage_in_remote_local_3 CHILD merge_mProjectPP-3.3_PID1_ID5
+PARENT stage_in_remote_local_3 CHILD merge_mProjectPP-3.3_PID1_ID4
+PARENT stage_in_remote_local_3 CHILD merge_mProjectPP-3.3_PID1_ID3
+PARENT stage_in_remote_local_3 CHILD mJPEG_ID000387
+PARENT stage_in_remote_local_3 CHILD merge_mDiffFit-3.3_PID2_ID4
+PARENT stage_in_remote_local_3 CHILD merge_mDiffFit-3.3_PID2_ID3
+PARENT stage_in_remote_local_3 CHILD merge_mDiffFit-3.3_PID2_ID2
+PARENT stage_in_remote_local_3 CHILD merge_mDiffFit-3.3_PID2_ID1
+PARENT stage_in_remote_local_3 CHILD merge_mDiffFit-3.3_PID2_ID11
+PARENT stage_in_remote_local_3 CHILD merge_mDiffFit-3.3_PID2_ID10
+PARENT stage_in_remote_local_3 CHILD mImgtbl_ID000384
+PARENT stage_in_remote_local_3 CHILD merge_mProjectPP-3.3_PID1_ID1
+PARENT stage_in_remote_local_3 CHILD merge_mProjectPP-3.3_PID1_ID2
+PARENT merge_mDiffFit-3.3_PID2_ID1 CHILD mConcatFit_ID000298
+PARENT merge_mDiffFit-3.3_PID2_ID11 CHILD mConcatFit_ID000298
+PARENT merge_mDiffFit-3.3_PID2_ID10 CHILD mConcatFit_ID000298
+PARENT mImgtbl_ID000384 CHILD mAdd_ID000385
+PARENT mAdd_ID000385 CHILD mShrink_ID000386
+PARENT mAdd_ID000385 CHILD stage_out_remote_local_6_0
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mDiffFit-3.3_PID2_ID1
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mDiffFit-3.3_PID2_ID4
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mBackground-3.3_PID5_ID1
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mDiffFit-3.3_PID2_ID2
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mDiffFit-3.3_PID2_ID6
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mDiffFit-3.3_PID2_ID10
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mDiffFit-3.3_PID2_ID5
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mBackground-3.3_PID5_ID2
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mDiffFit-3.3_PID2_ID3
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mDiffFit-3.3_PID2_ID7
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mBackground-3.3_PID5_ID4
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mDiffFit-3.3_PID2_ID8
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mBackground-3.3_PID5_ID5
+PARENT merge_mProjectPP-3.3_PID1_ID1 CHILD merge_mDiffFit-3.3_PID2_ID9
+PARENT mConcatFit_ID000298 CHILD mBgModel_ID000299
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mDiffFit-3.3_PID2_ID7
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mDiffFit-3.3_PID2_ID6
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mDiffFit-3.3_PID2_ID3
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mDiffFit-3.3_PID2_ID4
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mBackground-3.3_PID5_ID4
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mDiffFit-3.3_PID2_ID10
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mDiffFit-3.3_PID2_ID11
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mDiffFit-3.3_PID2_ID9
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mDiffFit-3.3_PID2_ID5
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mDiffFit-3.3_PID2_ID2
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mDiffFit-3.3_PID2_ID8
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mBackground-3.3_PID5_ID5
+PARENT merge_mProjectPP-3.3_PID1_ID2 CHILD merge_mBackground-3.3_PID5_ID1
+PARENT stage_out_remote_local_7_0 CHILD register_local_7_0
+PARENT stage_out_remote_local_6_0 CHILD register_local_6_0
+PARENT mShrink_ID000386 CHILD mJPEG_ID000387
+PARENT mShrink_ID000386 CHILD stage_out_remote_local_7_0
+PARENT create_dir_montage_0_local CHILD merge_mBackground-3.3_PID5_ID5
+PARENT create_dir_montage_0_local CHILD merge_mDiffFit-3.3_PID2_ID7
+PARENT create_dir_montage_0_local CHILD merge_mBackground-3.3_PID5_ID4
+PARENT create_dir_montage_0_local CHILD merge_mDiffFit-3.3_PID2_ID8
+PARENT create_dir_montage_0_local CHILD merge_mDiffFit-3.3_PID2_ID5
+PARENT create_dir_montage_0_local CHILD merge_mDiffFit-3.3_PID2_ID6
+PARENT create_dir_montage_0_local CHILD merge_mBackground-3.3_PID5_ID1
+PARENT create_dir_montage_0_local CHILD mBgModel_ID000299
+PARENT create_dir_montage_0_local CHILD merge_mDiffFit-3.3_PID2_ID9
+PARENT create_dir_montage_0_local CHILD merge_mBackground-3.3_PID5_ID3
+PARENT create_dir_montage_0_local CHILD merge_mBackground-3.3_PID5_ID2
+PARENT create_dir_montage_0_local CHILD merge_mProjectPP-3.3_PID1_ID5
+PARENT create_dir_montage_0_local CHILD merge_mProjectPP-3.3_PID1_ID4
+PARENT create_dir_montage_0_local CHILD merge_mProjectPP-3.3_PID1_ID3
+PARENT create_dir_montage_0_local CHILD mJPEG_ID000387
+PARENT create_dir_montage_0_local CHILD stage_in_remote_local_0
+PARENT create_dir_montage_0_local CHILD merge_mDiffFit-3.3_PID2_ID4
+PARENT create_dir_montage_0_local CHILD stage_in_remote_local_1
+PARENT create_dir_montage_0_local CHILD merge_mDiffFit-3.3_PID2_ID3
+PARENT create_dir_montage_0_local CHILD stage_in_remote_local_2
+PARENT create_dir_montage_0_local CHILD merge_mDiffFit-3.3_PID2_ID2
+PARENT create_dir_montage_0_local CHILD stage_in_remote_local_3
+PARENT create_dir_montage_0_local CHILD merge_mDiffFit-3.3_PID2_ID1
+PARENT create_dir_montage_0_local CHILD merge_mDiffFit-3.3_PID2_ID11
+PARENT create_dir_montage_0_local CHILD merge_mDiffFit-3.3_PID2_ID10
+PARENT create_dir_montage_0_local CHILD mImgtbl_ID000384
+PARENT create_dir_montage_0_local CHILD mAdd_ID000385
+PARENT create_dir_montage_0_local CHILD merge_mProjectPP-3.3_PID1_ID1
+PARENT create_dir_montage_0_local CHILD mConcatFit_ID000298
+PARENT create_dir_montage_0_local CHILD merge_mProjectPP-3.3_PID1_ID2
+PARENT create_dir_montage_0_local CHILD mShrink_ID000386
+######################################################################
+# End of DAG
+######################################################################

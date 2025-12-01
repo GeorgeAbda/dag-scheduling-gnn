@@ -1,0 +1,41 @@
+######################################################################
+# PEGASUS WMS GENERATED DAG FILE
+# DAG diamond
+# Index = 0, Count = 1
+######################################################################
+
+JOB create_dir_diamond_0_hpcc create_dir_diamond_0_hpcc.sub
+SCRIPT POST create_dir_diamond_0_hpcc /opt/pegasus/default/bin/pegasus-exitcode create_dir_diamond_0_hpcc.out
+
+JOB stage_in_local_hpcc_0 stage_in_local_hpcc_0.sub
+SCRIPT POST stage_in_local_hpcc_0 /opt/pegasus/default/bin/pegasus-exitcode stage_in_local_hpcc_0.out
+
+JOB preprocess_ID000001 preprocess_ID000001.sub
+SCRIPT POST preprocess_ID000001 /opt/pegasus/default/bin/pegasus-exitcode preprocess_ID000001.out
+
+JOB findrange_ID000002 findrange_ID000002.sub
+SCRIPT POST findrange_ID000002 /opt/pegasus/default/bin/pegasus-exitcode findrange_ID000002.out
+
+JOB findrange_ID000003 findrange_ID000003.sub
+SCRIPT POST findrange_ID000003 /opt/pegasus/default/bin/pegasus-exitcode findrange_ID000003.out
+
+JOB analyze_ID000004 analyze_ID000004.sub
+SCRIPT POST analyze_ID000004 /opt/pegasus/default/bin/pegasus-exitcode analyze_ID000004.out
+
+JOB stage_out_local_hpcc_2_0 stage_out_local_hpcc_2_0.sub
+SCRIPT POST stage_out_local_hpcc_2_0 /opt/pegasus/default/bin/pegasus-exitcode stage_out_local_hpcc_2_0.out
+
+PARENT findrange_ID000002 CHILD analyze_ID000004
+PARENT findrange_ID000003 CHILD analyze_ID000004
+PARENT preprocess_ID000001 CHILD findrange_ID000002
+PARENT preprocess_ID000001 CHILD findrange_ID000003
+PARENT analyze_ID000004 CHILD stage_out_local_hpcc_2_0
+PARENT stage_in_local_hpcc_0 CHILD preprocess_ID000001
+PARENT create_dir_diamond_0_hpcc CHILD findrange_ID000002
+PARENT create_dir_diamond_0_hpcc CHILD findrange_ID000003
+PARENT create_dir_diamond_0_hpcc CHILD preprocess_ID000001
+PARENT create_dir_diamond_0_hpcc CHILD analyze_ID000004
+PARENT create_dir_diamond_0_hpcc CHILD stage_in_local_hpcc_0
+######################################################################
+# End of DAG
+######################################################################
