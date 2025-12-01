@@ -23,6 +23,7 @@ def generate_dataset(
     arrival_rate: float,
     vm_rng_seed: int | None = 0,
     gnp_p: float | tuple[float, float] | None = None,
+    req_divisor: int = 20,
 ) -> Dataset:
     """
     Generate a dataset.
@@ -46,8 +47,8 @@ def generate_dataset(
         min_task_length=min_task_length,
         max_task_length=max_task_length,
         # Make sure that the problem is feasible
-        max_req_memory_mb=max(vm.memory_mb for vm in vms),
-        max_req_cpu_cores=max(vm.cpu_cores for vm in vms),
+        max_req_memory_mb=max(1024, max(vm.memory_mb for vm in vms)//req_divisor),
+        max_req_cpu_cores=max(1, max(vm.cpu_cores for vm in vms)//req_divisor),
         task_arrival=task_arrival,
         arrival_rate=arrival_rate,
         rng=rng,
@@ -185,6 +186,160 @@ def _enforce_queue_free(
                     new_cpu, new_mem = fit_to_vm(float(t.req_cpu_cores) * down, float(t.req_memory_mb) * down)
                     t.req_memory_mb = int(new_mem)
                     t.req_cpu_cores = int(new_cpu)
+
+
+def _peak_layer_metrics(wf, vms):
+    graph: dict[int, set[int]] = {t.id: set(t.child_ids) for t in wf.tasks}
+    layers = _topological_layers(graph)
+    L_peak = max(layers, key=len) if layers else []
+    if not L_peak:
+        return {
+            "width": 0,
+            "ifr_mem": 0.0,
+            "ifr_cpu": 0.0,
+            "ifr": 0.0,
+            "match_size": 0,
+            "layer_size": 0,
+            "alpha_mem": 0.0,
+            "alpha_cpu": 0.0,
+        }
+    mem_reqs = sorted([next(t.req_memory_mb for t in wf.tasks if t.id == u) for u in L_peak], reverse=True)
+    cpu_reqs = sorted([next(t.req_cpu_cores for t in wf.tasks if t.id == u) for u in L_peak], reverse=True)
+    vm_mems = sorted([int(v.memory_mb) for v in vms], reverse=True)
+    vm_cores = sorted([int(max(1, v.cpu_cores)) for v in vms], reverse=True)
+    k = min(len(L_peak), len(vm_mems), len(vm_cores))
+    if k <= 0:
+        k = len(L_peak)
+    S_mem = np.cumsum(mem_reqs[:k]).astype(float) if k > 0 else np.array([0.0])
+    P_mem = np.cumsum(vm_mems[:k]).astype(float) if k > 0 else np.array([1.0])
+    S_cpu = np.cumsum(cpu_reqs[:k]).astype(float) if k > 0 else np.array([0.0])
+    P_cpu = np.cumsum(vm_cores[:k]).astype(float) if k > 0 else np.array([1.0])
+    ifr_mem = float(np.max(S_mem / np.maximum(P_mem, 1e-9))) if k > 0 else 0.0
+    ifr_cpu = float(np.max(S_cpu / np.maximum(P_cpu, 1e-9))) if k > 0 else 0.0
+    ifr = max(ifr_mem, ifr_cpu)
+
+    topk_vm_mems = P_mem[-1] / max(1, k) if k > 0 else 1.0
+    topk_vm_cores = P_cpu[-1] / max(1, k) if k > 0 else 1.0
+    alpha_mem = float(np.mean(mem_reqs[:k])) / max(1.0, float(topk_vm_mems)) if k > 0 else 0.0
+    alpha_cpu = float(np.mean(cpu_reqs[:k])) / max(1.0, float(topk_vm_cores)) if k > 0 else 0.0
+
+    # Multi-tenant greedy packing on peak layer: pack tasks across VMs s.t. per-VM (mem, cores) capacities are respected
+    tasks = [next(t for t in wf.tasks if t.id == u) for u in L_peak]
+    vm_caps = [(int(max(1, vm.cpu_cores)), int(vm.memory_mb)) for vm in vms]
+    # Try multiple orderings to reduce false negatives
+    def try_pack(order: list[int]) -> tuple[int, bool, float, float]:
+        # residual capacities
+        cap_cores = [c for (c, _m) in vm_caps]
+        cap_mem = [m for (_c, m) in vm_caps]
+        res_cores = cap_cores.copy()
+        res_mem = cap_mem.copy()
+        used = [False] * len(vm_caps)
+        placed = 0
+        for idx in order:
+            t = tasks[idx]
+            rc = int(max(1, t.req_cpu_cores))
+            rm = int(max(1, t.req_memory_mb))
+            best_vm = -1
+            best_slack = None
+            for j in range(len(vm_caps)):
+                if rc <= res_cores[j] and rm <= res_mem[j]:
+                    # favor tighter fit to avoid saturating VMs
+                    slack = (res_cores[j] - rc) / max(1.0, float(cap_cores[j])) + (res_mem[j] - rm) / max(1.0, float(cap_mem[j]))
+                    if best_slack is None or slack < best_slack:
+                        best_slack = slack
+                        best_vm = j
+            if best_vm >= 0:
+                res_cores[best_vm] -= rc
+                res_mem[best_vm] -= rm
+                used[best_vm] = True
+                placed += 1
+            else:
+                continue
+        # Compute strict slack ratios across used VMs (min across used)
+        used_idxs = [j for j, u in enumerate(used) if u]
+        if used_idxs:
+            min_slack_core = min((res_cores[j] / max(1.0, float(cap_cores[j]))) for j in used_idxs)
+            min_slack_mem = min((res_mem[j] / max(1.0, float(cap_mem[j]))) for j in used_idxs)
+        else:
+            min_slack_core = 1.0
+            min_slack_mem = 1.0
+        # sat_free means no VM is exactly saturated in either dimension when used (strict positive slack)
+        sat_free = all((res_cores[j] > 0 and res_mem[j] > 0) for j in used_idxs) if used_idxs else True
+        return placed, sat_free, float(min_slack_mem), float(min_slack_core)
+
+    idxs = list(range(len(tasks)))
+    # Sort keys
+    by_mem = sorted(idxs, key=lambda i: int(tasks[i].req_memory_mb), reverse=True)
+    by_cpu = sorted(idxs, key=lambda i: int(tasks[i].req_cpu_cores), reverse=True)
+    # Combined pressure ratio w.r.t. max VM
+    maxC = float(max((c for (c, _m) in vm_caps), default=1))
+    maxM = float(max((m for (_c, m) in vm_caps), default=1))
+    by_ratio = sorted(idxs, key=lambda i: max(float(tasks[i].req_cpu_cores)/max(1.0,maxC), float(tasks[i].req_memory_mb)/max(1.0,maxM)), reverse=True)
+    cand = [try_pack(by_mem), try_pack(by_cpu), try_pack(by_ratio)]
+    # pick best candidate: prioritize placing all with sat_free True; then max placed; then best slack
+    def key_fn(t):
+        placed, sat_free_i, s_mem, s_core = t
+        return (
+            int(placed == len(tasks) and sat_free_i),  # 1 if perfect & sat-free
+            placed,                                     # placed count
+            min(s_mem, s_core),                         # minimal slack ratio
+        )
+    best = max(cand, key=key_fn) if cand else (0, True, 1.0, 1.0)
+    pack_size = int(best[0])
+    sat_free_peak = bool(best[1]) and (pack_size == len(tasks))
+    min_slack_mem = float(best[2])
+    min_slack_core = float(best[3])
+
+    return {
+        "width": len(L_peak),
+        "ifr_mem": ifr_mem,
+        "ifr_cpu": ifr_cpu,
+        "ifr": ifr,
+        "pack_size": pack_size,
+        "layer_size": len(L_peak),
+        "alpha_mem": alpha_mem,
+        "alpha_cpu": alpha_cpu,
+        "sat_free": sat_free_peak,
+        "min_slack_mem_ratio": min_slack_mem,
+        "min_slack_core_ratio": min_slack_core,
+    }
+
+
+def verify_queue_free(workflows, vms, tol: float = 0.0) -> dict:
+    res = []
+    ok_all = True
+    max_ifr = 0.0
+    max_alpha = 0.0
+    for wf in workflows:
+        m = _peak_layer_metrics(wf, vms)
+        ratio = float(m.get("pack_size", 0)) / max(1, m["layer_size"]) if m["layer_size"] > 0 else 1.0
+        ok = (ratio >= 1.0 - 1e-9) and bool(m.get("sat_free", False))
+        ok_all = ok_all and ok
+        max_ifr = max(max_ifr, float(m["ifr"]))
+        max_alpha = max(max_alpha, float(max(m["alpha_mem"], m["alpha_cpu"])) )
+        res.append({"workflow_id": wf.id, **m, "ok": ok})
+    return {"queue_free": ok_all, "max_ifr": max_ifr, "alpha_empirical": max_alpha, "details": res}
+
+
+def classify_queue_regime(workflows, vms, alpha_divisor: float | None = None, tol: float = 0.05) -> tuple[str, dict]:
+    v = verify_queue_free(workflows, vms, tol=tol)
+    labels = []
+    for d in v["details"]:
+        ratio = float(d.get("pack_size", 0)) / max(1, d["layer_size"]) if d["layer_size"] > 0 else 1.0
+        if ratio >= 1.0 - 1e-9 and bool(d.get("sat_free", False)):
+            labels.append("queue_free")
+        elif ratio >= 1.0 - 1e-9:
+            labels.append("queue")
+        else:
+            labels.append("queue_high")
+    # Dataset-level label as the worst-case
+    order = {"queue_free": 0, "queue": 1, "queue_high": 2}
+    label = max(labels, key=lambda x: order[x]) if labels else "queue_free"
+    info = {"per_workflow": labels, **v}
+    if alpha_divisor is not None and alpha_divisor > 0:
+        info["alpha_divisor"] = float(alpha_divisor)
+        info["alpha_divisor_inverse"] = 1.0 / float(alpha_divisor)
+    return label, info
 
 
 def generate_dataset_long_cp_queue_free(

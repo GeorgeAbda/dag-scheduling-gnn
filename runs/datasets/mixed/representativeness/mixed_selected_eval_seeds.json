@@ -1,0 +1,42 @@
+{
+  "selected_eval_seeds": [
+    200054,
+    100018
+  ],
+  "by_domain": {
+    "wide": {
+      "selected": [
+        200054
+      ],
+      "coverage": {
+        "radius": 8.956198110423092,
+        "avg_min_dist": 5.473624007485003,
+        "cluster_sizes": [
+          100
+        ]
+      }
+    },
+    "longcp": {
+      "selected": [
+        100018
+      ],
+      "coverage": {
+        "radius": 8.719369728395373,
+        "avg_min_dist": 5.558127945986629,
+        "cluster_sizes": [
+          100
+        ]
+      }
+    }
+  },
+  "feature_names": [
+    "tasks",
+    "edges",
+    "width_peak",
+    "depth_avg",
+    "Pbar",
+    "burstiness",
+    "cp_frac"
+  ],
+  "notes": "Per-domain z-score; k-center greedy k=1 per domain; coverage computed in z-space"
+}

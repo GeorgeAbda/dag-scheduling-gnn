@@ -50,7 +50,7 @@ class Args:
     """if set, calls torch.set_num_threads(this) to control CPU threading"""
     track: bool = False
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    no_tensorboard: bool = True
+    no_tensorboard: bool = False
     """if True, do not write any TensorBoard logs (uses a NullWriter)"""
     bn_eval: bool = True
     """if True, force BatchNorm layers to eval mode during training to avoid small-batch errors"""

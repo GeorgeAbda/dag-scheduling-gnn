@@ -42,6 +42,7 @@ import torch
 import gymnasium as gym
 import tyro
 import csv as _csv
+from torch.utils.tensorboard import SummaryWriter
 
 # Import base ablation components
 from scheduler.rl_model import ablation_gnn as AG
@@ -74,7 +75,7 @@ class Args:
     env_mode: str = "async"
 
     # TensorBoard logging control (similar to train.py)
-    no_tensorboard: bool = True
+    no_tensorboard: bool = False
     # Generate offline plots from CSV metrics after training completes
     offline_plots_after_training: bool = True
     # Logging cadence controls (iterations)
@@ -232,6 +233,25 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
 
     # CPU threading config: prefer explicit torch_num_threads; else match num_envs if enabled
     try:
+        class NullWriter:
+            def add_text(self, *args, **kwargs):
+                pass
+
+            def add_scalar(self, *args, **kwargs):
+                pass
+
+            def close(self):
+                pass
+
+        if args.no_tensorboard:
+            writer = NullWriter()
+        else:
+            tb_dir = Path(args.output_dir) / args.exp_name / "tb" / variant.name
+            writer = SummaryWriter(str(tb_dir))
+            try:
+                writer.add_text("variant", variant.name)
+            except Exception:
+                pass
         # Pareto archive (makespan, active_energy)
         pareto_points: list[tuple[float, float, int, int]] = []
         pareto_models: list[dict] = []
@@ -932,7 +952,7 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
                     except Exception:
                         pass
 
-            for step in range(0, args.num_steps):
+            for step in range(args.num_steps):
                 global_step += args.num_envs
                 obs[step] = next_obs_tensor
                 dones[step] = next_done_tensor
@@ -942,15 +962,23 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
                 actions[step] = action
                 logprobs[step] = logprob
 
-                next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
-                next_done = np.logical_or(terminations, truncations)
+                next_obs, reward, terminated, truncated, infos = envs.step(actions[step].cpu().numpy())
+                next_done = np.logical_or(terminated, truncated)
                 rewards[step] = torch.Tensor(reward).to(device).view(-1)
                 next_obs_tensor, next_done_tensor = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
 
-                if "final_info" in infos:
+                if isinstance(infos, dict) and "final_info" in infos:
                     for info in infos["final_info"]:
                         if info and "episode" in info:
-                            pbar.update(global_step - pbar.n)
+                            try:
+                                pbar.update(global_step - pbar.n)
+                            except Exception:
+                                pass
+                            try:
+                                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                            except Exception:
+                                pass
 
             with torch.no_grad():
                 next_value = agent.get_value(next_obs_tensor).reshape(1, -1)
@@ -1216,6 +1244,16 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
                             cvar_mk = float(np.mean(mk_sorted[:k]))
                             cvar_en = float(np.mean(en_sorted[:k]))
 
+                            try:
+                                writer.add_scalar(f"eval/{variant.name}/mean_makespan", mean_mk, int(global_step))
+                                writer.add_scalar(f"eval/{variant.name}/mean_active_energy", mean_en, int(global_step))
+                                writer.add_scalar(f"eval/{variant.name}/worst_makespan", worst_mk, int(global_step))
+                                writer.add_scalar(f"eval/{variant.name}/worst_active_energy", worst_en, int(global_step))
+                                writer.add_scalar(f"eval/{variant.name}/cvar_makespan", cvar_mk, int(global_step))
+                                writer.add_scalar(f"eval/{variant.name}/cvar_active_energy", cvar_en, int(global_step))
+                            except Exception:
+                                pass
+
                             ck_mean = f"{variant.name}_mean_pf_it{int(iteration):05d}_st{int(global_step):09d}.pt"
                             ck_worst = f"{variant.name}_worst_pf_it{int(iteration):05d}_st{int(global_step):09d}.pt"
                             ck_cvar = f"{variant.name}_cvar_pf_it{int(iteration):05d}_st{int(global_step):09d}.pt"
@@ -1357,6 +1395,10 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
     finally:
         try:
             envs.close()
+        except Exception:
+            pass
+        try:
+            writer.close()
         except Exception:
             pass
         try:

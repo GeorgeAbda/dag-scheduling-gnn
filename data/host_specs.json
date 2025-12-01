@@ -1,7 +1,7 @@
 [
   {
     "name": "PowerEdge R740",
-    "cores": 56,
+    "cores": 156,
     "cpu_speed_gips": 604.8,
     "memory_gb": 164,
     "disk_tb": 10,
@@ -11,7 +11,7 @@
   },
   {
     "name": "PowerEdge C6100",
-    "cores": 48,
+    "cores": 148,
     "cpu_speed_gips": 604.8,
     "memory_gb": 64,
     "disk_tb": 10,
@@ -21,7 +21,7 @@
   },
   {
     "name": "PowerEdge R820",
-    "cores": 32,
+    "cores": 132,
     "cpu_speed_gips": 604.8,
     "memory_gb": 128,
     "disk_tb": 10,
@@ -31,7 +31,7 @@
   },
   {
     "name": "iDataPlex dx360",
-    "cores": 16,
+    "cores": 116,
     "cpu_speed_gips": 604.8,
     "memory_gb": 48,
     "disk_tb": 10,
@@ -41,7 +41,7 @@
   },
   {
     "name": "PowerEdge R710",
-    "cores": 12,
+    "cores": 112,
     "cpu_speed_gips": 604.8,
     "memory_gb": 64,
     "disk_tb": 10,
@@ -51,7 +51,7 @@
   },
   {
     "name": "ProLiant DL380 Gen10",
-    "cores": 40,
+    "cores": 140,
     "cpu_speed_gips": 604.8,
     "memory_gb": 128,
     "disk_tb": 12,
@@ -61,7 +61,7 @@
   },
   {
     "name": "ThinkSystem SR650",
-    "cores": 24,
+    "cores": 124,
     "cpu_speed_gips": 604.8,
     "memory_gb": 64,
     "disk_tb": 8,
@@ -71,7 +71,7 @@
   },
   {
     "name": "PowerEdge R930",
-    "cores": 72,
+    "cores": 172,
     "cpu_speed_gips": 604.8,
     "memory_gb": 128,
     "disk_tb": 16,
@@ -81,7 +81,7 @@
   },
   {
     "name": "Sun Fire X4170 M3",
-    "cores": 16,
+    "cores": 116,
     "cpu_speed_gips": 604.8,
     "memory_gb": 64,
     "disk_tb": 8,
@@ -91,7 +91,7 @@
   },
   {
     "name": "Supermicro 2029P",
-    "cores": 48,
+    "cores": 148,
     "cpu_speed_gips": 604.8,
     "memory_gb": 128,
     "disk_tb": 12,

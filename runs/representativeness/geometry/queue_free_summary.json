@@ -1,0 +1,20 @@
+{
+  "longcp": {
+    "n_train": 100,
+    "queue_free_frac": 1.0,
+    "qf_counts": 100.0,
+    "ifr_mem_min": 0.3333333333333333,
+    "ifr_mem_max": 1.0,
+    "ifr_cpu_min": 0.0714285714285714,
+    "ifr_cpu_max": 0.9539473684210528
+  },
+  "wide": {
+    "n_train": 100,
+    "queue_free_frac": 0.99,
+    "qf_counts": 99.0,
+    "ifr_mem_min": 0.5294117647058824,
+    "ifr_mem_max": 1.0196078431372548,
+    "ifr_cpu_min": 0.5486111111111112,
+    "ifr_cpu_max": 0.9595588235294118
+  }
+}

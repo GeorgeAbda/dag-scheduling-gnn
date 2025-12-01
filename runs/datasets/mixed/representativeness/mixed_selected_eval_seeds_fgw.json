@@ -1,0 +1,90 @@
+{
+  "selected_eval_seeds": [
+    200087,
+    200016,
+    200062,
+    200026,
+    200045,
+    100018,
+    100070,
+    100032,
+    100084,
+    100063
+  ],
+  "by_domain": {
+    "wide": {
+      "selected": [
+        200087,
+        200016,
+        200062,
+        200026,
+        200045
+      ],
+      "coverage": {
+        "radius": 2.4168643741053937,
+        "avg_min_dist": 1.0631548040240373,
+        "cluster_sizes": [
+          1,
+          1,
+          28,
+          32,
+          38
+        ]
+      }
+    },
+    "longcp": {
+      "selected": [
+        100018,
+        100070,
+        100032,
+        100084,
+        100063
+      ],
+      "coverage": {
+        "radius": 2.6830634836404714,
+        "avg_min_dist": 1.2195428200039915,
+        "cluster_sizes": [
+          9,
+          3,
+          20,
+          56,
+          12
+        ]
+      }
+    }
+  },
+  "feature_names": [
+    "tasks",
+    "edges",
+    "width_peak",
+    "depth_avg",
+    "Pbar",
+    "burstiness",
+    "cp_frac"
+  ],
+  "method": {
+    "name": "fgw_barycenter",
+    "alpha": 0.5,
+    "notes": "Global z-score; FGW barycenter prototypes; nearest-seed selection per domain (balanced)."
+  },
+  "zscore": {
+    "mean": {
+      "tasks": 22.675,
+      "edges": 68.81,
+      "width_peak": 10.175,
+      "depth_avg": 9.29,
+      "Pbar": 3.7365766888399685,
+      "burstiness": 2.2110304901371998,
+      "cp_frac": 0.49626067493841736
+    },
+    "std": {
+      "tasks": 5.479002862000443,
+      "edges": 51.99965113914674,
+      "width_peak": 8.179172901139435,
+      "depth_avg": 5.7428916079010675,
+      "Pbar": 2.6624248254714047,
+      "burstiness": 0.6331332662051715,
+      "cp_frac": 0.3368205724185519
+    }
+  }
+}

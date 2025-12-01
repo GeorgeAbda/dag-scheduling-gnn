@@ -1,0 +1,32 @@
+{
+  "selected_eval_seeds": [
+    200006,
+    200018,
+    200044,
+    200046,
+    200072,
+    100016,
+    100046,
+    100074,
+    100077,
+    100094
+  ],
+  "by_domain": {
+    "wide": [
+      200006,
+      200018,
+      200044,
+      200046,
+      200072
+    ],
+    "longcp": [
+      100016,
+      100046,
+      100074,
+      100077,
+      100094
+    ]
+  },
+  "fgw_alpha": 0.5,
+  "notes": "FGW (alpha) on per-task z-scored features; C=shortest-path undirected scaled; k-center on FGW distances"
+}

@@ -14,6 +14,7 @@ from scheduler.dataset_generator.core.gen_dataset import (
     generate_dataset,
     generate_dataset_long_cp_queue_free,
     generate_dataset_wide_queue_free,
+    classify_queue_regime,
 )
 
 
@@ -41,6 +42,10 @@ class Args:
     max_memory_gb: int | None = None
     min_cpu_speed: int | None = None
     max_cpu_speed: int | None = None
+    # Queue regime controls for single-config mode
+    target_regime: str = "any"
+    regime_req_divisor: int = 20
+    regime_tol: float = 0.05
 
 
 def _gen_ds_for_seed(seed: int, cfg: Dict[str, Any]) -> Dataset:
@@ -200,6 +205,29 @@ def _select_k_representatives(Fz: np.ndarray, k: int) -> List[int]:
     return centers
 
 
+def _select_k_representatives_restricted(Fz: np.ndarray, candidates: List[int], k: int) -> List[int]:
+    n = Fz.shape[0]
+    cand = sorted({int(i) for i in candidates if 0 <= int(i) < n})
+    if not cand:
+        return _select_k_representatives(Fz, k)
+    k = int(min(max(1, k), len(cand)))
+    mean = Fz.mean(axis=0)
+    start = int(min(cand, key=lambda i: float(np.sum((Fz[i] - mean) ** 2))))
+    centers = [start]
+    dmin = np.sum((Fz - Fz[start]) ** 2, axis=1)
+    for _ in range(1, k):
+        best_i = start
+        best_val = -1.0
+        for i in cand:
+            val = float(np.min(np.vstack([dmin, np.sum((Fz - Fz[i]) ** 2, axis=1)]), axis=0).mean())
+            if val > best_val and i not in centers:
+                best_val = val
+                best_i = i
+        centers.append(int(best_i))
+        dmin = np.minimum(dmin, np.sum((Fz - Fz[best_i]) ** 2, axis=1))
+    return centers
+
+
 def main(a: Args) -> None:
     # If dual-config requested and out_dataset_json provided, build fixed dataset JSON
     if a.wide_config and a.longcp_config and a.out_dataset_json:
@@ -308,7 +336,7 @@ def main(a: Args) -> None:
         # fallback: generate 100 deterministic seeds
         rng = np.random.RandomState(12345)
         tr_seeds = [int(rng.randint(1, 10_000_000)) for _ in range(100)]
-    # build features
+    # build features (structure-only, independent of regime)
     feats_list: List[np.ndarray] = []
     for s in tr_seeds:
         ds = _gen_ds_for_seed(int(s), tr_cfg)
@@ -316,7 +344,70 @@ def main(a: Args) -> None:
         feats_list.append(f)
     F = np.stack(feats_list, axis=0)
     Fz, mu, sigma = _standardize(F)
-    idxs = _select_k_representatives(Fz, int(a.k))
+
+    # Optional: restrict representatives to seeds matching a target queue regime
+    target = str(a.target_regime).lower().strip()
+    idxs: List[int]
+    if target != "any":
+        ds_conf = tr_cfg.get("dataset", {})
+        dag_method = str(ds_conf.get("dag_method", "gnp"))
+        gnp_min_n = int(ds_conf.get("gnp_min_n", 12))
+        gnp_max_n = int(ds_conf.get("gnp_max_n", 30))
+        gnp_p = ds_conf.get("gnp_p", None)
+        # fabric and arrival settings
+        h = int(ds_conf.get("host_count", 4))
+        v = int(ds_conf.get("vm_count", 10))
+        max_mem_gb = int(ds_conf.get("max_memory_gb", 10))
+        min_mips = int(ds_conf.get("min_cpu_speed", 500))
+        max_mips = int(ds_conf.get("max_cpu_speed", 5000))
+        wf_count = int(ds_conf.get("workflow_count", 1))
+        tdist = str(ds_conf.get("task_length_dist", "normal"))
+        tmin = int(ds_conf.get("min_task_length", 500))
+        tmax = int(ds_conf.get("max_task_length", 100_000))
+        tarr = str(ds_conf.get("task_arrival", "static"))
+        arate = float(ds_conf.get("arrival_rate", 3.0))
+
+        cand_idx: List[int] = []
+        for i, s in enumerate(tr_seeds):
+            ds_seed = generate_dataset(
+                seed=int(s),
+                host_count=h,
+                vm_count=v,
+                max_memory_gb=max_mem_gb,
+                min_cpu_speed_mips=min_mips,
+                max_cpu_speed_mips=max_mips,
+                workflow_count=wf_count,
+                dag_method=dag_method,
+                gnp_min_n=gnp_min_n,
+                gnp_max_n=gnp_max_n,
+                task_length_dist=tdist,
+                min_task_length=tmin,
+                max_task_length=tmax,
+                task_arrival=tarr,
+                arrival_rate=arate,
+                gnp_p=(None if gnp_p is None else float(gnp_p)),
+                req_divisor=int(a.regime_req_divisor),
+            )
+            label, _ = classify_queue_regime(ds_seed.workflows, ds_seed.vms, alpha_divisor=float(a.regime_req_divisor), tol=float(a.regime_tol))
+            if label == target:
+                cand_idx.append(i)
+
+        if cand_idx:
+            centers = _select_k_representatives_restricted(Fz, cand_idx, int(a.k))
+            # Fill up to k if not enough candidates by adding global centers
+            if len(centers) < int(a.k):
+                extra = _select_k_representatives(Fz, int(a.k))
+                for e in extra:
+                    if e not in centers:
+                        centers.append(e)
+                    if len(centers) >= int(a.k):
+                        break
+            idxs = centers[: int(a.k)]
+        else:
+            idxs = _select_k_representatives(Fz, int(a.k))
+    else:
+        idxs = _select_k_representatives(Fz, int(a.k))
+
     selected_seeds = [int(tr_seeds[i]) for i in idxs]
 
     # coverage metrics
