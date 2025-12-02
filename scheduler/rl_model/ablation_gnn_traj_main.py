@@ -75,7 +75,7 @@ class Args:
     env_mode: str = "async"
 
     # TensorBoard logging control (similar to train.py)
-    no_tensorboard: bool = True
+    no_tensorboard: bool = False
     # Generate offline plots from CSV metrics after training completes
     offline_plots_after_training: bool = True
     # Logging cadence controls (iterations)
@@ -497,8 +497,10 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
         # Apply global req_divisor override if requested at top level
         try:
             req_div = getattr(args, 'dataset_req_divisor', None)
-        except Exception:
+            
+        except Exception as e:
             req_div = None
+            print(f"Warning: Could not get dataset_req_divisor from args: {e}")
         if req_div is not None and ds_args is not None:
             ds_args = _dc_replace(ds_args, req_divisor=int(req_div))
         return seeds, ds_args
@@ -522,7 +524,10 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
             env_domains.append(dom)
             args_i = _dc_replace(args)
             if dom == 'wide' and ds_wide is not None:
+                # Use req_divisor from ds_wide (set by _load_rl_cfg)
+                req_div_val = getattr(ds_wide, 'req_divisor', None)
                 args_i.dataset = _dc_replace(args.dataset,
+                                             style=ds_wide.style,
                                              host_count=ds_wide.host_count,
                                              vm_count=ds_wide.vm_count,
                                              max_memory_gb=ds_wide.max_memory_gb,
@@ -537,9 +542,14 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
                                              min_task_length=ds_wide.min_task_length,
                                              max_task_length=ds_wide.max_task_length,
                                              task_arrival=ds_wide.task_arrival,
-                                             arrival_rate=ds_wide.arrival_rate)
+                                             arrival_rate=ds_wide.arrival_rate,
+                                             req_divisor=req_div_val,
+                                             )
             elif dom == 'longcp' and ds_long is not None:
+                # Use req_divisor from ds_long (set by _load_rl_cfg)
+                req_div_val = getattr(ds_long, 'req_divisor', None)
                 args_i.dataset = _dc_replace(args.dataset,
+                                             style=ds_long.style,
                                              host_count=ds_long.host_count,
                                              vm_count=ds_long.vm_count,
                                              max_memory_gb=ds_long.max_memory_gb,
@@ -554,17 +564,12 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
                                              min_task_length=ds_long.min_task_length,
                                              max_task_length=ds_long.max_task_length,
                                              task_arrival=ds_long.task_arrival,
-                                             arrival_rate=ds_long.arrival_rate)
+                                             arrival_rate=ds_long.arrival_rate,
+                                             req_divisor=req_div_val,
+                                             )
             else:
                 # default fallback
                 pass
-            # If a global dataset_req_divisor is provided, enforce on per-env dataset
-            try:
-                req_div = getattr(args, 'dataset_req_divisor', None)
-            except Exception:
-                req_div = None
-            if req_div is not None:
-                args_i.dataset = _dc_replace(args_i.dataset, req_divisor=int(req_div))
             envs_args.append(args_i)
     else:
         env_domains = ['default'] * int(args.num_envs)
@@ -583,6 +588,7 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
         with p.open('r') as f:
             data = json.load(f)
         # If vms/hosts missing, synthesize them using host_specs.json (and ensure memory sufficiency)
+        
         if not isinstance(data, dict):
             raise RuntimeError("dataset_json must be a JSON object with at least 'workflows'")
         if ("vms" not in data) or ("hosts" not in data):
@@ -643,20 +649,7 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
                     "vmm": "Xen",
                 })
             # If none of the hosts can satisfy memory/cores, upscale the first host (rare fallback)
-            if max_req_mb > max(h["memory_mb"] for h in hosts):
-                scale_mb = int(max_req_mb)
-                hosts[0]["memory_mb"] = scale_mb
-                for v in vms:
-                    if v["host_id"] == hosts[0]["id"]:
-                        v["memory_mb"] = scale_mb
-            if max_req_cores > max(h["cores"] for h in hosts):
-                scale_cores = int(max_req_cores)
-                hosts[0]["cores"] = scale_cores
-                for v in vms:
-                    if v["host_id"] == hosts[0]["id"]:
-                        v["cpu_cores"] = scale_cores
-            full = {"workflows": workflows, "vms": vms, "hosts": hosts}
-            fixed_ds = Dataset.from_json(full)
+
         else:
             fixed_ds = Dataset.from_json(data)
         try:
@@ -684,10 +677,12 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
     if domain_mode:
         try:
             if ds_wide is not None:
+                print(f"Generating wide dataset with seed {args.seed}")
                 _dsw = CloudSchedulingGymEnvironment.gen_dataset(int(args.seed), ds_wide)
                 _write_vm_specs_csv(per_variant_dir, f"{variant.name}_vm_specs_train_wide.csv", _dsw.vms)
                 _write_host_specs_csv(per_variant_dir, f"{variant.name}_host_specs_train_wide.csv", _dsw.hosts)
             if ds_long is not None:
+                print(f"Generating long dataset with seed {args.seed}")
                 _dsl = CloudSchedulingGymEnvironment.gen_dataset(int(args.seed), ds_long)
                 _write_vm_specs_csv(per_variant_dir, f"{variant.name}_vm_specs_train_longcp.csv", _dsl.vms)
                 _write_host_specs_csv(per_variant_dir, f"{variant.name}_host_specs_train_longcp.csv", _dsl.hosts)
@@ -787,6 +782,7 @@ def _train_one_variant_with_traj(args: Args, variant: AG.AblationVariant, device
     # Single-episode eval with active energy only
     def _eval_one_episode(agent: AG.Agent, args: Args, seed: int, ds_override: DatasetArgs | None = None) -> tuple[float, float]:
         # Build a temp Args with dataset override if provided
+        print(f"DEBUG: Evaluating seed {seed} with ds_override {ds_override}")
         if ds_override is not None:
             tmp_args = _dc_replace(args)
             tmp_args.dataset = _dc_replace(args.dataset,

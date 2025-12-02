@@ -909,6 +909,7 @@ class CloudSchedulingGymEnvironment(gym.Env):
         sd = seed if seed is not None else random.randint(1, MAX_TRAINING_DS_SEED)
         style = str(getattr(dataset_args, "style", "generic")).lower()
         gnp_p_val = getattr(dataset_args, "gnp_p", None)
+        req_div = getattr(dataset_args, "req_divisor", None)
         if style == "long_cp":
             # Use queue-free generator for long_cp; pin p if provided
             p_range = (float(gnp_p_val), float(gnp_p_val)) if gnp_p_val is not None else (0.70, 0.95)
@@ -930,6 +931,7 @@ class CloudSchedulingGymEnvironment(gym.Env):
                 vm_rng_seed=0,
                 p_range=p_range,
                 alpha_range=(0.8, 0.95),
+                req_divisor=req_div,
             )
         if style == "wide":
             # Use queue-free generator for wide; pin p if provided
@@ -952,6 +954,7 @@ class CloudSchedulingGymEnvironment(gym.Env):
                 vm_rng_seed=0,
                 p_range=p_range,
                 alpha_range=(0.8, 0.95),
+                req_divisor=req_div,
             )
         # Fallback: legacy non-queue-free generator
         return generate_dataset(

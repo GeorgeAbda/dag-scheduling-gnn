@@ -12,7 +12,7 @@ from scheduler.dataset_generator.core.gen_dataset import (
 
 @dataclass
 class DatasetArgs:
-    seed: int = 42
+    seed: int = 12345
     """random seed"""
     host_count: int = 2
     """number of hosts"""
@@ -46,10 +46,13 @@ class DatasetArgs:
     """dataset style: generic | long_cp | wide (queue-free enforced for long_cp/wide)"""
     gnp_p: float | None = None
     """optional fixed p for G(n,p); if set with style=long_cp|wide, it pins the style to this p (p_range=(p,p))."""
+    req_divisor: int | None = None
+    """Optional: when set, can be used by callers to pass a specific req_divisor into generic generators."""
 
 
 def main(args: DatasetArgs):
     if args.style == "long_cp":
+        print(f"Generating long_cp dataset with seed {args.seed}")
         dataset = generate_dataset_long_cp_queue_free(
             seed=args.seed,
             host_count=args.host_count,
@@ -65,9 +68,13 @@ def main(args: DatasetArgs):
             max_task_length=args.max_task_length,
             task_arrival=args.task_arrival,
             arrival_rate=args.arrival_rate,
-            vm_rng_seed=0,
+            vm_rng_seed=0, 
+            req_divisor=args.req_divisor
         )
     elif args.style == "wide":
+        print(f"Generating wide dataset with seed {args.seed}")
+
+        print(f"Using req_divisor={args.req_divisor}")
         dataset = generate_dataset_wide_queue_free(
             seed=args.seed,
             host_count=args.host_count,
@@ -84,8 +91,11 @@ def main(args: DatasetArgs):
             task_arrival=args.task_arrival,
             arrival_rate=args.arrival_rate,
             vm_rng_seed=0,
+            req_divisor=args.req_divisor
         )
     else:
+
+        print(f"Generating default dataset with seed {args.seed}")
         dataset = generate_dataset(
             seed=args.seed,
             host_count=args.host_count,
@@ -102,6 +112,7 @@ def main(args: DatasetArgs):
             max_task_length=args.max_task_length,
             task_arrival=args.task_arrival,
             arrival_rate=args.arrival_rate,
+            req_divisor=args.req_divisor
         )
 
     json_data = json.dumps(dataset.to_json())

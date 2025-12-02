@@ -172,7 +172,11 @@ class AblationBaseNetwork(nn.Module):
         self._nnconv_layers: nn.ModuleList | None = None
         self._edgeconv_layers: nn.ModuleList | None = None
         self._layernorm: nn.Module | None = (nn.LayerNorm(embedding_dim) if use_layernorm else None)
-        self._attn_pool: GlobalAttention | None = (GlobalAttention(nn.Sequential(nn.Linear(embedding_dim, 1))) if use_attention_pool else None)
+        self._attn_pool: GlobalAttention | None = (
+            GlobalAttention(nn.Sequential(nn.Linear(embedding_dim, 1))) if use_attention_pool else None
+        )
+        if self._attn_pool is not None:
+            self._attn_pool = self._attn_pool.to(self.device)
         if not self.use_gnn:
             self.graph_network = nn.Identity()
         else:

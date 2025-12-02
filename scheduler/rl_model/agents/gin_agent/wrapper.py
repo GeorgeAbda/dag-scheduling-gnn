@@ -51,6 +51,9 @@ class GinAgentWrapper(gym.Wrapper):
         self.use_lagrangian: bool = False
         self.lag_alpha: float = float(lag_alpha)
         self.lag_lambda: float = float(lag_init)
+        # When enabled, restrict scoring state to valid actions only by filtering compatibilities
+        # to edges where the task is READY and not yet scheduled.
+        self.valid_only_scoring: bool = os.environ.get("VALID_ONLY_SCORING", "0") == "1"
 
     def set_lag_alpha(self, value: float) -> None:
         """No-op: Lagrangian is disabled."""
@@ -482,7 +485,15 @@ class GinAgentWrapper(gym.Wrapper):
         task_dependencies = np.array(observation.task_dependencies).T
 
         # Task-VM observations
-        compatibilities = np.array(observation.compatibilities).T
+        compat_array = np.array(observation.compatibilities, dtype=int)
+        if self.valid_only_scoring and compat_array.size > 0:
+            # Keep only edges where task is READY and not yet scheduled
+            task_ids = compat_array[:, 0]
+            ready_mask = task_state_ready[task_ids] == 1
+            not_scheduled_mask = task_state_scheduled[task_ids] == 0
+            keep = np.logical_and(ready_mask, not_scheduled_mask)
+            compat_array = compat_array[keep]
+        compatibilities = compat_array.T if compat_array.size > 0 else np.empty((2, 0), dtype=int)
 
         # Task completion times
         task_completion_time = observation.task_completion_time()

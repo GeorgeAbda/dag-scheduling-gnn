@@ -21,6 +21,7 @@ from scheduler.dataset_generator.gen_dataset import DatasetArgs
 from scheduler.rl_model.agents.gin_agent.agent import GinAgent
 from scheduler.rl_model.core.env.gym_env import CloudSchedulingGymEnvironment
 from scheduler.rl_model.agents.gin_agent.wrapper import GinAgentWrapper
+from scheduler.rl_model.ablation_gnn import AblationGinAgent, AblationVariant
 
 
 @dataclass
@@ -38,6 +39,9 @@ class Args:
     """Explicit full path to Agent A checkpoint (.pt). Overrides dir/filename if provided."""
     model_b_path: str | None = None
     """Explicit full path to Agent B checkpoint (.pt). Overrides dir/filename if provided."""
+
+    agent_type: str = "gin"
+    """Agent type: 'gin' for standard GinAgent, 'hetero' for AblationGinAgent hetero variant."""
 
     # Episode and sampling
     seed: int = 1
@@ -72,8 +76,21 @@ class Args:
     )
 
 
-def load_agent(model_dir: str | None, model_filename: str, model_path_explicit: str | None, device: torch.device) -> GinAgent:
-    agent = GinAgent(device)
+def load_agent(
+    model_dir: str | None,
+    model_filename: str,
+    model_path_explicit: str | None,
+    device: torch.device,
+    agent_type: str,
+):
+    agent_type = (agent_type or "gin").lower()
+    if agent_type == "hetero":
+        variant = AblationVariant(name="hetero", graph_type="hetero", use_task_dependencies=True)
+        agent: GinAgent | AblationGinAgent = AblationGinAgent(device, variant, embedding_dim=16)
+        strict = False
+    else:
+        agent = GinAgent(device)
+        strict = True
     if model_path_explicit:
         model_path = Path(model_path_explicit)
     else:
@@ -82,9 +99,9 @@ def load_agent(model_dir: str | None, model_filename: str, model_path_explicit: 
         model_path = Path(PROJECT_ROOT) / "logs" / model_dir / model_filename
     if not model_path.exists():
         raise FileNotFoundError(f"Model not found: {model_path}")
-    # weights_only=True for safety with new torch
+    # weights_only=True for safety with new torch (both plain and ablation agents use state_dicts)
     state_dict = torch.load(str(model_path), weights_only=True)
-    agent.load_state_dict(state_dict)
+    agent.load_state_dict(state_dict, strict=strict)
     agent.eval()
     return agent
 
@@ -117,8 +134,8 @@ def get_flat_scores(agent: GinAgent, obs_np: np.ndarray) -> Tuple[np.ndarray, to
 
 
 def collect_scores(args: Args, device: torch.device) -> Tuple[np.ndarray, np.ndarray]:
-    agent_a = load_agent(args.model_a_dir, args.model_a_filename, args.model_a_path, device)
-    agent_b = load_agent(args.model_b_dir, args.model_b_filename, args.model_b_path, device)
+    agent_a = load_agent(args.model_a_dir, args.model_a_filename, args.model_a_path, device, args.agent_type)
+    agent_b = load_agent(args.model_b_dir, args.model_b_filename, args.model_b_path, device, args.agent_type)
 
     env = build_env(args.dataset)
     obs_np, _ = env.reset(seed=MIN_TESTING_DS_SEED)

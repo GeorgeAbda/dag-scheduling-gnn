@@ -23,7 +23,7 @@ def generate_dataset(
     arrival_rate: float,
     vm_rng_seed: int | None = 0,
     gnp_p: float | tuple[float, float] | None = None,
-    req_divisor: int = 20,
+    req_divisor: int = 55,
 ) -> Dataset:
     """
     Generate a dataset.
@@ -37,7 +37,8 @@ def generate_dataset(
     hosts = generate_hosts(host_count, vm_rng)
     vms = generate_vms(vm_count, max_memory_gb, min_cpu_speed_mips, max_cpu_speed_mips, vm_rng)
     allocate_vms(vms, hosts, vm_rng)
-
+    print(f' req_divisor={req_divisor}, max_memory={max(vm.memory_mb for vm in vms)}, max_cores={max(vm.cpu_cores for vm in vms)}')
+    print(f' max_req_memory_mb={max(1024, max(vm.memory_mb for vm in vms)//req_divisor)}, max_req_cpu_cores={max(1, max(vm.cpu_cores for vm in vms)//req_divisor)}')
     workflows = generate_workflows(
         workflow_count=workflow_count,
         dag_method=dag_method,
@@ -360,6 +361,7 @@ def generate_dataset_long_cp_queue_free(
     vm_rng_seed: int | None = 0,
     p_range: tuple[float, float] = (0.70, 0.95),
     alpha_range: tuple[float, float] = (0.8, 0.95),
+    req_divisor: int = 56,
 ) -> Dataset:
     rng = np.random.RandomState(seed)
     vm_rng = rng if vm_rng_seed is None else np.random.RandomState(vm_rng_seed)
@@ -367,6 +369,18 @@ def generate_dataset_long_cp_queue_free(
     vms = generate_vms(vm_count, max_memory_gb, min_cpu_speed_mips, max_cpu_speed_mips, vm_rng)
     allocate_vms(vms, hosts, vm_rng)
     gnp_p = (float(p_range[0]), float(p_range[1]))
+    max_req_mem = max(vm.memory_mb for vm in vms)
+    max_req_cores = max(vm.cpu_cores for vm in vms)
+    # print(f" BEFORE[long_cp_qf] req_divisor={req_divisor}, max_vm_mem={max(vm.memory_mb for vm in vms)}, "
+    #       f"max_req_mem={max_req_mem}, max_req_cores={max_req_cores}")
+    if req_divisor is not None and req_divisor > 0:
+        max_req_mem = max(1024, max(vm.memory_mb for vm in vms) // int(req_divisor))
+        max_req_cores = max(1, max(vm.cpu_cores for vm in vms) // int(req_divisor))
+    else:
+        max_req_mem = max(vm.memory_mb for vm in vms)
+        max_req_cores = max(vm.cpu_cores for vm in vms)
+    # print(f" AFTER[long_cp_qf] req_divisor={req_divisor}, max_vm_mem={max(vm.memory_mb for vm in vms)}, "
+    #       f"max_req_mem={max_req_mem}, max_req_cores={max_req_cores}")
     workflows = generate_workflows(
         workflow_count=workflow_count,
         dag_method="gnp",
@@ -375,14 +389,14 @@ def generate_dataset_long_cp_queue_free(
         task_length_dist=task_length_dist,
         min_task_length=min_task_length,
         max_task_length=max_task_length,
-        max_req_memory_mb=max(vm.memory_mb for vm in vms),
-        max_req_cpu_cores=max(vm.cpu_cores for vm in vms),
+        max_req_memory_mb=max_req_mem,
+        max_req_cpu_cores=max_req_cores,
         task_arrival=task_arrival,
         arrival_rate=arrival_rate,
         rng=rng,
         gnp_p=gnp_p,
     )
-    _enforce_queue_free(workflows, vms, rng, alpha_low=alpha_range[0], alpha_high=alpha_range[1])
+    # _enforce_queue_free(workflows, vms, rng, alpha_low=alpha_range[0], alpha_high=alpha_range[1])
     return Dataset(workflows=workflows, vms=vms, hosts=hosts)
 
 
@@ -404,6 +418,7 @@ def generate_dataset_wide_queue_free(
     vm_rng_seed: int | None = 0,
     p_range: tuple[float, float] = (0.02, 0.20),
     alpha_range: tuple[float, float] = (0.8, 0.95),
+    req_divisor: int = 56,
 ) -> Dataset:
     rng = np.random.RandomState(seed)
     vm_rng = rng if vm_rng_seed is None else np.random.RandomState(vm_rng_seed)
@@ -411,6 +426,18 @@ def generate_dataset_wide_queue_free(
     vms = generate_vms(vm_count, max_memory_gb, min_cpu_speed_mips, max_cpu_speed_mips, vm_rng)
     allocate_vms(vms, hosts, vm_rng)
     gnp_p = (float(p_range[0]), float(p_range[1]))
+    max_req_mem = max(vm.memory_mb for vm in vms)
+    max_req_cores = max(vm.cpu_cores for vm in vms)
+    # print(f" BEFORE[wide_qf] req_divisor={req_divisor}, max_vm_mem={max(vm.memory_mb for vm in vms)}, "
+    #       f"max_req_mem={max_req_mem}, max_req_cores={max_req_cores}")
+    if req_divisor is not None and req_divisor > 0:
+        max_req_mem = max(1024, max(vm.memory_mb for vm in vms) // int(req_divisor))
+        max_req_cores = max(1, max(vm.cpu_cores for vm in vms) // int(req_divisor))
+    else:
+        max_req_mem = max(vm.memory_mb for vm in vms)
+        max_req_cores = max(vm.cpu_cores for vm in vms)
+    # print(f" AFTER[wide_qf] req_divisor={req_divisor}, max_vm_mem={max(vm.memory_mb for vm in vms)}, "
+    #       f"max_req_mem={max_req_mem}, max_req_cores={max_req_cores}")
     workflows = generate_workflows(
         workflow_count=workflow_count,
         dag_method="gnp",
@@ -419,12 +446,12 @@ def generate_dataset_wide_queue_free(
         task_length_dist=task_length_dist,
         min_task_length=min_task_length,
         max_task_length=max_task_length,
-        max_req_memory_mb=max(vm.memory_mb for vm in vms),
-        max_req_cpu_cores=max(vm.cpu_cores for vm in vms),
+        max_req_memory_mb=max_req_mem,
+        max_req_cpu_cores=max_req_cores,
         task_arrival=task_arrival,
         arrival_rate=arrival_rate,
         rng=rng,
         gnp_p=gnp_p,
     )
-    _enforce_queue_free(workflows, vms, rng, alpha_low=alpha_range[0], alpha_high=alpha_range[1])
+    # _enforce_queue_free(workflows, vms, rng, alpha_low=alpha_range[0], alpha_high=alpha_range[1])
     return Dataset(workflows=workflows, vms=vms, hosts=hosts)
