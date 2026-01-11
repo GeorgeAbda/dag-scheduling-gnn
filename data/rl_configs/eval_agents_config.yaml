@@ -1,0 +1,38 @@
+# Configuration for agent evaluation across multiple host regimes
+# Used by eval_agents.py
+
+# Seed configuration files
+seeds:
+  longcp:
+    path: data/rl_configs/train_long_cp_p08_seeds.json
+  wide:
+    path: data/rl_configs/train_wide_p005_seeds.json
+
+# Host regimes with specialist checkpoints
+regimes:
+  AL:
+    label: "AL (Heterogeneous)"
+    host_specs: data/host_specs.json
+    longcp_checkpoint: logs/AL_case/long_cp_specialist/ablation/per_variant/hetero/hetero_best_return.pt
+    wide_checkpoint: logs/AL_case/wide_specialist/ablation/per_variant/hetero/hetero_best_return.pt
+  
+  HS:
+    label: "HS (Homogeneous Speed)"
+    host_specs: data/host_specs_homospeed.json
+    longcp_checkpoint: logs/HS_case/long_cp_specialist/ablation/per_variant/hetero/hetero_best_return.pt
+    wide_checkpoint: logs/HS_case/wide_specialist/ablation/per_variant/hetero/hetero_best_return.pt
+  
+  HP:
+    label: "HP (Homogeneous Power)"
+    host_specs: data/host_specs_homoPower.json
+    longcp_checkpoint: logs/HP_case/long_cp_specialist/ablation/per_variant/hetero/hetero_best_return.pt
+    wide_checkpoint: logs/HP_case/wide_specialist/ablation/per_variant/hetero/hetero_best_return.pt
+
+# Evaluation settings
+evaluation:
+  repeats_per_seed: 5
+  device: cpu
+
+# Output settings
+output:
+  dir: logs/agent_eval

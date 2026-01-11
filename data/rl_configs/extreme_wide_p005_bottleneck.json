@@ -1,0 +1,15 @@
+{
+  "training_seeds": [202002],
+  "all_seeds": [202002],
+  "dataset": {
+    "style": "wide",
+    "edge_probability": 0.05,
+    "min_tasks": 10,
+    "max_tasks": 10,
+    "hosts": 10,
+    "vms": 10,
+    "workflow_count": 1,
+    "task_length": {"distribution": "normal", "min": 750, "max": 150000}
+  },
+  "comment": "Extreme parallel: wide with p=0.05, bottleneck regime (1.5x pressure), no req_divisor"
+}

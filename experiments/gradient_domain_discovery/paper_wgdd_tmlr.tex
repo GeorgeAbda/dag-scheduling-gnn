@@ -1,0 +1,618 @@
+%%
+%% Wasserstein Gradient Domain Discovery (WGDD)
+%% A Novel Unsupervised Method for Multi-Objective Reinforcement Learning
+%% Formatted for TMLR (Transactions on Machine Learning Research)
+%%
+\documentclass{article}
+
+% TMLR stylefile
+\usepackage{tmlr}
+
+% Optional packages
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+% Custom commands
+\newcommand{\cM}{\mathcal{M}}
+\newcommand{\cS}{\mathcal{S}}
+\newcommand{\cA}{\mathcal{A}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cG}{\mathcal{G}}
+\newcommand{\bE}{\mathbb{E}}
+\newcommand{\bR}{\mathbb{R}}
+\newcommand{\wass}{W_1}
+\newcommand{\grad}{\nabla_\theta}
+
+% Colors
+\definecolor{widecolor}{HTML}{32CD32}
+\definecolor{longcpcolor}{HTML}{FF6B6B}
+
+% TMLR metadata
+\title{Wasserstein Gradient Domain Discovery: Unsupervised Identification of Strategy Domains in Multi-Objective Reinforcement Learning}
+
+% Authors - use \author for camera ready
+\author{
+Anonymous Authors
+}
+
+% For submission
+\iclrfinalcopy % Uncomment for camera-ready
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Multi-objective reinforcement learning (MORL) agents must balance competing objectives across diverse environment configurations. A fundamental challenge is identifying when different configurations induce distinct trade-off structures that require specialized policies. We introduce \textbf{Wasserstein Gradient Domain Discovery (WGDD)}, an unsupervised method that discovers strategy domains by analyzing distributional differences in policy gradients across objective weightings. Unlike prior work requiring domain labels or exhaustive specialist training, WGDD operates purely from gradient signatures of a single generalist policy. Our method: (1) collects gradient distributions under multi-scale objective sampling, (2) computes pairwise Wasserstein distances between environment configurations, (3) applies spectral clustering with automatic domain count selection, and (4) validates stability via bootstrap resampling. On a cloud scheduling benchmark with workflow DAGs, WGDD achieves perfect domain recovery (NMI=1.0, ARI=1.0) separating wide-parallel from long-sequential structures, automatically selecting $k=2$ domains. We provide theoretical grounding connecting gradient distributions to Pareto structure and demonstrate the method's utility for curriculum design and mixture-of-experts deployment.
+\end{abstract}
+
+%% ============================================================================
+%% INTRODUCTION
+%% ============================================================================
+\section{Introduction}
+\label{sec:introduction}
+
+Multi-objective reinforcement learning (MORL) addresses sequential decision problems where agents must simultaneously optimize multiple, often conflicting, objectives \citep{roijers2013survey}. In practice, the trade-off structure between objectives varies across environment configurations: some configurations admit aligned objectives where a single strategy optimizes all goals, while others exhibit fundamental conflicts requiring careful prioritization.
+
+Consider cloud workflow scheduling, where an agent assigns computational tasks to heterogeneous machines while minimizing both completion time (makespan) and energy consumption. The optimal strategy depends critically on workflow structure: shallow, wide DAGs with many parallel tasks favor energy-efficient packing, while deep, sequential DAGs with long critical paths require aggressive parallelization to minimize time. Training a single ``generalist'' policy on mixed data often yields suboptimal performance on both structure types, while training separate specialists requires knowing the domain partition a priori.
+
+\paragraph{The Domain Discovery Problem.}
+We address the following question: \emph{Given a collection of environment configurations drawn from a continuous parameter space, can we automatically identify clusters of configurations that induce similar multi-objective trade-offs?} This unsupervised domain discovery problem has significant practical implications:
+\begin{itemize}
+    \item \textbf{Curriculum design}: Identify which configurations to group for staged training.
+    \item \textbf{Mixture-of-experts}: Route deployment queries to appropriate specialist policies.
+    \item \textbf{Transfer learning}: Predict which source policies transfer to new configurations.
+    \item \textbf{Interpretability}: Understand how environment structure shapes optimal behavior.
+\end{itemize}
+
+\paragraph{Contributions.}
+We propose \textbf{Wasserstein Gradient Domain Discovery (WGDD)}, the first unsupervised method for identifying strategy domains in MORL based on policy gradient distributions. Our contributions are:
+
+\begin{enumerate}
+    \item \textbf{Gradient Distribution Characterization}: We show that a generalist policy's gradient responses to different objective weightings encode sufficient information to distinguish environment configurations with different trade-off structures (Section~\ref{sec:theory}).
+    
+    \item \textbf{Wasserstein-Based Similarity}: We introduce a principled distance metric between configurations based on the Wasserstein distance between their gradient distributions, capturing distributional differences that point estimates miss (Section~\ref{sec:method}).
+    
+    \item \textbf{Complete Pipeline}: We provide a full pipeline including multi-scale objective sampling, spectral clustering, automatic $k$ selection via silhouette analysis, and bootstrap stability validation (Section~\ref{sec:method}).
+    
+    \item \textbf{Empirical Validation}: On a cloud scheduling benchmark, WGDD achieves perfect domain recovery (NMI=1.0) without access to ground-truth labels, correctly identifying the partition between wide-parallel and long-sequential workflows (Section~\ref{sec:experiments}).
+\end{enumerate}
+
+%% ============================================================================
+%% RELATED WORK
+%% ============================================================================
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Multi-Objective Reinforcement Learning.}
+MORL extends standard RL to vector-valued rewards \citep{roijers2013survey, hayes2022practical}. Approaches include scalarization methods that convert to single-objective problems \citep{van2014multi}, Pareto-based methods that maintain solution sets \citep{van2013scalarized}, and preference-conditioned policies that adapt to runtime weightings \citep{abels2019dynamic}. Our work complements these by addressing the orthogonal problem of identifying when different environment configurations require different strategies.
+
+\paragraph{Multi-Task Learning and Gradient Conflicts.}
+Multi-task learning (MTL) trains shared representations across related tasks \citep{caruana1997multitask}. Recent work identifies gradient conflicts as a key challenge: when task gradients oppose, naive averaging degrades performance. PCGrad \citep{yu2020gradient} projects conflicting gradients, CAGrad \citep{liu2021conflict} finds conflict-averse directions, and MGDA \citep{sener2018multi} computes Pareto-optimal gradient combinations. These methods assume known task boundaries. We address the complementary problem of discovering task (domain) boundaries from gradient patterns.
+
+\paragraph{Task Affinity and Clustering.}
+\citet{fifty2021efficiently} measure task affinity via gradient similarity to group related tasks. \citet{standley2020tasks} use transfer learning performance for task grouping. Unlike these approaches that require training multiple models or known task labels, WGDD operates with a single generalist and discovers structure from gradient distributions alone.
+
+\paragraph{Domain Adaptation and Discovery.}
+Domain adaptation addresses distribution shift between source and target domains \citep{ben2010theory}. Domain discovery methods cluster unlabeled data to identify latent domains \citep{hoffman2012discovering}. In RL, domain randomization \citep{tobin2017domain} and system identification \citep{yu2017preparing} handle environment variation. WGDD differs by discovering domains based on \emph{objective trade-off structure} rather than observation distributions.
+
+\paragraph{Optimal Transport in Machine Learning.}
+Wasserstein distances from optimal transport theory provide principled distribution comparisons \citep{villani2008optimal}. Applications include generative modeling \citep{arjovsky2017wasserstein}, domain adaptation \citep{courty2017optimal}, and representation learning \citep{kolouri2017optimal}. We apply Wasserstein distances to policy gradient distributions, a novel application enabling gradient-based domain discovery.
+
+%% ============================================================================
+%% PROBLEM FORMULATION
+%% ============================================================================
+\section{Problem Formulation}
+\label{sec:problem}
+
+\subsection{Multi-Objective MDP}
+
+We consider a parameterized family of multi-objective MDPs. Let $\xi \in \Xi$ denote environment parameters (e.g., DAG structure, resource heterogeneity). Each parameter setting defines an MDP:
+\begin{equation}
+\cM_\xi = (\cS, \cA, P_\xi, \mathbf{r}_\xi, \gamma)
+\end{equation}
+where $\cS$ is the state space, $\cA$ the action space, $P_\xi$ the transition dynamics, $\mathbf{r}_\xi: \cS \times \cA \to \bR^m$ an $m$-dimensional reward function, and $\gamma$ the discount factor.
+
+\paragraph{Scalarized Objective.}
+For preference vector $\boldsymbol{\alpha} \in \Delta^{m-1}$ (the simplex), the scalarized reward is:
+\begin{equation}
+r_\xi^{(\boldsymbol{\alpha})}(s,a) = \boldsymbol{\alpha}^\top \mathbf{r}_\xi(s,a) = \sum_{i=1}^{m} \alpha_i r_{\xi,i}(s,a)
+\end{equation}
+
+In our experiments, $m=2$ with objectives $r_1 = -\text{makespan}$ and $r_2 = -\text{energy}$, so $\boldsymbol{\alpha} = (\alpha, 1-\alpha)$ for $\alpha \in [0,1]$.
+
+\subsection{Policy Gradient Characterization}
+
+Given a policy $\pi_\theta$ parameterized by $\theta$, the policy gradient for MDP $\cM_\xi$ under preference $\boldsymbol{\alpha}$ is:
+\begin{equation}
+g_\xi^{(\boldsymbol{\alpha})} = \grad J_\xi^{(\boldsymbol{\alpha})}(\theta) = \bE_{\tau \sim \pi_\theta} \left[ \sum_{t=0}^{T} \grad \log \pi_\theta(a_t|s_t) \cdot G_t^{(\boldsymbol{\alpha})} \right]
+\end{equation}
+where $G_t^{(\boldsymbol{\alpha})} = \sum_{k=t}^{T} \gamma^{k-t} r_\xi^{(\boldsymbol{\alpha})}(s_k, a_k)$ is the return.
+
+\paragraph{Gradient Distribution.}
+Due to stochasticity in trajectories and environment dynamics, each (MDP, preference) pair induces a \emph{distribution} over gradients:
+\begin{equation}
+P_\xi^{(\boldsymbol{\alpha})} = \text{Law}\left( g_\xi^{(\boldsymbol{\alpha})} \right)
+\end{equation}
+
+This distribution captures both the expected gradient direction and its uncertainty under the current policy.
+
+\subsection{Domain Discovery Problem}
+
+\begin{definition}[Strategy Domain]
+A \emph{strategy domain} $\cD \subseteq \Xi$ is a set of environment parameters such that configurations within $\cD$ induce similar gradient responses across objective preferences. Formally, $\xi, \xi' \in \cD$ implies:
+\begin{equation}
+d_W\left( \{P_\xi^{(\boldsymbol{\alpha})}\}_{\boldsymbol{\alpha} \in \cA}, \{P_{\xi'}^{(\boldsymbol{\alpha})}\}_{\boldsymbol{\alpha} \in \cA} \right) \leq \epsilon
+\end{equation}
+for some Wasserstein-based distance $d_W$ and threshold $\epsilon$.
+\end{definition}
+
+\begin{problem}[Unsupervised Domain Discovery]
+Given a set of environment configurations $\{\xi_1, \ldots, \xi_N\} \subset \Xi$ and a trained policy $\pi_\theta$, partition the configurations into $K$ domains $\cD_1, \ldots, \cD_K$ such that within-domain gradient distributions are similar and between-domain distributions are distinct, \emph{without access to ground-truth domain labels}.
+\end{problem}
+
+%% ============================================================================
+%% METHOD
+%% ============================================================================
+\section{Method: Wasserstein Gradient Domain Discovery}
+\label{sec:method}
+
+WGDD operates in five stages, illustrated in Figure~\ref{fig:wgdd-pipeline}.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{figures/wgdd_pipeline.png}
+    \caption{WGDD pipeline: (1) Train generalist on mixed data, (2) Sample multi-scale objectives, (3) Collect gradient distributions per (MDP, objective) pair, (4) Compute Wasserstein distance matrix, (5) Spectral clustering with automatic $k$ selection.}
+    \label{fig:wgdd-pipeline}
+\end{figure}
+
+\subsection{Stage 1: Generalist Pre-Training}
+
+We first train a single policy $\pi_\theta$ on data sampled uniformly from the configuration space $\Xi$. This ensures the policy has broad experience and non-trivial gradient responses across diverse configurations.
+
+\paragraph{Training Objective.}
+Using PPO \citep{schulman2017proximal} with a balanced scalarization ($\alpha = 0.5$):
+\begin{equation}
+\max_\theta \bE_{\xi \sim \text{Uniform}(\Xi)} \left[ J_\xi^{(0.5, 0.5)}(\theta) \right]
+\end{equation}
+
+The generalist need not be optimal on any single configuration, only sufficiently trained to have learned preferences that manifest in gradient differences.
+
+\subsection{Stage 2: Multi-Scale Objective Sampling}
+
+To capture the full trade-off landscape, we sample objectives at multiple scales:
+
+\begin{itemize}
+    \item \textbf{Extremes}: Pure objectives $\boldsymbol{\alpha} \in \{(1,0), (0,1)\}$
+    \item \textbf{Uniform}: Random $\alpha \sim \text{Uniform}(0.05, 0.95)$
+    \item \textbf{Focused}: Key trade-off points $\alpha \in \{0.25, 0.5, 0.75\} \pm 0.05$
+\end{itemize}
+
+This multi-scale sampling ensures coverage of both extreme behaviors and nuanced trade-off regions. Let $\cA_K = \{\boldsymbol{\alpha}_1, \ldots, \boldsymbol{\alpha}_K\}$ denote the sampled objectives.
+
+\subsection{Stage 3: Gradient Distribution Collection}
+
+For each configuration $\xi_i$ and objective $\boldsymbol{\alpha}_k$, we collect $R$ gradient samples via REINFORCE:
+\begin{equation}
+g_{i,k}^{(r)} = \grad \sum_{t=0}^{T} \log \pi_\theta(a_t|s_t) \cdot G_t^{(\boldsymbol{\alpha}_k)}, \quad r = 1, \ldots, R
+\end{equation}
+
+This yields empirical distributions $\hat{P}_i^{(k)} = \{g_{i,k}^{(1)}, \ldots, g_{i,k}^{(R)}\}$ for each (configuration, objective) pair.
+
+\subsection{Stage 4: Wasserstein Distance Matrix}
+
+\paragraph{Dimensionality Reduction.}
+Policy gradients are high-dimensional ($d \sim 10^5$ for neural networks). We apply PCA to project gradients to a lower-dimensional subspace that captures most variance:
+\begin{equation}
+\tilde{g} = U_D^\top g, \quad U_D = \text{top-}D\text{ eigenvectors of } \text{Cov}(g)
+\end{equation}
+where $D$ is chosen to explain $\geq 80\%$ variance.
+
+\paragraph{Wasserstein Distance.}
+For configurations $\xi_i$ and $\xi_j$, we compute the average 1-Wasserstein distance across objectives and PCA dimensions:
+\begin{equation}
+d_{ij} = \frac{1}{K \cdot D} \sum_{k=1}^{K} \sum_{d=1}^{D} \wass\left( \tilde{P}_{i,k}^{(d)}, \tilde{P}_{j,k}^{(d)} \right)
+\label{eq:wasserstein-distance}
+\end{equation}
+where $\tilde{P}_{i,k}^{(d)}$ is the marginal distribution of the $d$-th PCA component for configuration $i$ under objective $k$, and $\wass$ denotes the 1-Wasserstein (Earth Mover's) distance.
+
+\paragraph{Why Wasserstein?}
+The Wasserstein distance captures the ``effort'' to transform one distribution into another, accounting for both location and spread differences. Unlike KL divergence, it is symmetric, satisfies the triangle inequality, and is well-defined even when distributions have disjoint support.
+
+\subsection{Stage 5: Spectral Clustering with Automatic $k$}
+
+\paragraph{Affinity Matrix.}
+Convert distances to similarities using a Gaussian kernel:
+\begin{equation}
+A_{ij} = \exp\left( -\frac{d_{ij}^2}{2\sigma^2} \right), \quad \sigma = \text{median}(d_{ij})
+\end{equation}
+
+\paragraph{Spectral Clustering.}
+Apply normalized spectral clustering \citep{ng2001spectral} to the affinity matrix, computing eigenvectors of the normalized Laplacian and applying $k$-means in the spectral embedding.
+
+\paragraph{Automatic $k$ Selection.}
+Select the number of clusters maximizing silhouette score:
+\begin{equation}
+k^* = \arg\max_{k \in \{2, \ldots, K_{\max}\}} \text{Silhouette}(\mathbf{d}, \text{labels}_k)
+\end{equation}
+where $\mathbf{d}$ is the distance matrix and $\text{labels}_k$ are cluster assignments for $k$ clusters.
+
+\subsection{Auxiliary Analyses}
+
+\paragraph{Conflict Tensor.}
+For interpretability, we compute pairwise gradient conflicts:
+\begin{equation}
+C_i^{(j,k)} = \cos\left( \bar{g}_i^{(j)}, \bar{g}_i^{(k)} \right) = \frac{\bar{g}_i^{(j) \top} \bar{g}_i^{(k)}}{\|\bar{g}_i^{(j)}\| \|\bar{g}_i^{(k)}\|}
+\end{equation}
+where $\bar{g}_i^{(k)}$ is the mean gradient for configuration $i$ under objective $k$. The conflict between pure objectives (makespan vs. energy) indicates whether the configuration exhibits a true Pareto trade-off.
+
+\paragraph{Bootstrap Stability.}
+To assess robustness, we perform $B$ bootstrap iterations: subsample $80\%$ of configurations, re-cluster, and track co-occurrence frequencies. The stability score is:
+\begin{equation}
+S = \frac{1}{B \cdot \binom{N}{2}} \sum_{b=1}^{B} \sum_{i<j} \mathbf{1}[\text{same cluster in iteration } b]
+\end{equation}
+
+%% ============================================================================
+%% THEORETICAL ANALYSIS
+%% ============================================================================
+\section{Theoretical Analysis}
+\label{sec:theory}
+
+We provide intuition for why gradient distributions encode domain structure.
+
+\subsection{Gradient-Objective Duality}
+
+\begin{proposition}[Gradient Decomposition]
+\label{prop:decomposition}
+For a multi-objective MDP with objectives $(r_1, r_2)$ and scalarization $\boldsymbol{\alpha} = (\alpha, 1-\alpha)$:
+\begin{equation}
+g^{(\alpha)} = \alpha \cdot g^{(1)} + (1-\alpha) \cdot g^{(0)} + O(\alpha(1-\alpha))
+\end{equation}
+where $g^{(1)}$ and $g^{(0)}$ are gradients for pure objectives.
+\end{proposition}
+
+This decomposition shows that gradient responses interpolate between pure-objective gradients, with the interpolation path encoding the trade-off structure.
+
+\subsection{Domain Separation Condition}
+
+\begin{theorem}[Domain Separation, Informal]
+\label{thm:separation}
+Two configurations $\xi, \xi'$ belong to different domains if and only if there exists an objective weighting $\boldsymbol{\alpha}$ such that the corresponding optimal policies differ significantly:
+\begin{equation}
+\|\pi^*_\xi(\boldsymbol{\alpha}) - \pi^*_{\xi'}(\boldsymbol{\alpha})\|_{TV} > \delta
+\end{equation}
+When this holds, the gradient distributions under a sufficiently trained generalist will differ:
+\begin{equation}
+\wass(P_\xi^{(\boldsymbol{\alpha})}, P_{\xi'}^{(\boldsymbol{\alpha})}) > \epsilon(\delta)
+\end{equation}
+\end{theorem}
+
+This connects gradient distribution differences to policy-level differences, justifying the use of Wasserstein distances for domain discovery.
+
+\subsection{Identifiability}
+
+\begin{proposition}[Gradient Subspace Alignment]
+\label{prop:subspace}
+Under mild conditions, the principal components of gradient distributions align with directions of maximal objective conflict. Specifically, if PC1 explains the most variance, it approximately aligns with:
+\begin{equation}
+\text{PC1} \propto g^{(1)} - g^{(0)}
+\end{equation}
+the difference between pure-objective gradients.
+\end{proposition}
+
+This explains why PCA on gradient distributions reveals domain structure: the principal directions capture how objectives trade off, and configurations with different trade-off patterns project differently.
+
+%% ============================================================================
+%% EXPERIMENTS
+%% ============================================================================
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Experimental Setup}
+
+\paragraph{Environment: Cloud Workflow Scheduling.}
+We use a cloud scheduling simulator where an agent assigns workflow DAG tasks to heterogeneous VMs. Each workflow is a directed acyclic graph with tasks of varying computational requirements. Objectives are:
+\begin{itemize}
+    \item $r_1 = -\text{makespan}$: Minimize total completion time
+    \item $r_2 = -\text{energy}$: Minimize active energy consumption
+\end{itemize}
+
+\paragraph{Configuration Parameters.}
+Environment configurations are parameterized by:
+\begin{itemize}
+    \item \textbf{Edge probability} $p \in [0.05, 0.95]$: Controls DAG density
+    \item \textbf{Task count} $n \in [5, 50]$: Number of tasks
+    \item \textbf{Task length} $L \in [10^2, 2 \times 10^5]$: Computational size
+\end{itemize}
+
+\paragraph{Ground-Truth Domains.}
+We define two structural families:
+\begin{itemize}
+    \item \textbf{Wide}: $p \in [0.05, 0.40]$, $n \in [20, 50]$, $L \in [10^2, 5 \times 10^4]$. High parallelism, short critical paths.
+    \item \textbf{LongCP}: $p \in [0.60, 0.95]$, $n \in [5, 20]$, $L \in [5 \times 10^4, 2 \times 10^5]$. Low parallelism, long critical paths.
+\end{itemize}
+
+\paragraph{Policy Architecture.}
+We use a heterogeneous graph neural network (GNN) with 2-layer GIN backbone, 128-dimensional hidden layers, 64-dimensional node embeddings, BatchNorm, and task dependency edges. Total parameters: 213,634.
+
+\paragraph{Training.}
+The generalist is trained with PPO for $2 \times 10^6$ steps on a 50/50 mixture of Wide and LongCP configurations, with learning rate $2.5 \times 10^{-4}$ and batch size 256.
+
+\paragraph{WGDD Configuration.}
+We use 40 MDPs (20 Wide, 20 LongCP), 20 objectives (2 extreme + 10 uniform + 8 focused), 5 gradient replicates per (MDP, objective), 256 rollout steps per gradient, and 20 bootstrap iterations.
+
+\subsection{Main Results}
+
+Table~\ref{tab:main-results} summarizes WGDD performance.
+
+\begin{table}[t]
+\centering
+\caption{WGDD results on cloud scheduling benchmark.}
+\label{tab:main-results}
+\begin{tabular}{@{}lc@{}}
+\toprule
+Metric & Value \\
+\midrule
+\textbf{NMI} (Normalized Mutual Information) & \textbf{1.000} \\
+\textbf{ARI} (Adjusted Rand Index) & \textbf{1.000} \\
+Silhouette Score & 0.400 \\
+Optimal $k$ (auto-selected) & 2 \\
+Bootstrap Stability & 0.310 \\
+PCA Explained Variance (2 PCs) & 73.6\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Perfect Domain Recovery.}
+WGDD achieves NMI=1.0 and ARI=1.0, perfectly separating all 20 Wide configurations into Cluster 0 and all 20 LongCP configurations into Cluster 1. This is achieved without any access to ground-truth labels.
+
+\paragraph{Automatic $k$ Selection.}
+Figure~\ref{fig:k-selection} shows silhouette scores for different $k$. The method correctly identifies $k^*=2$ as optimal, with clear separation from higher $k$ values.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.6\columnwidth]{figures/k_selection.png}
+    \caption{Silhouette scores for different cluster counts. $k=2$ is correctly selected as optimal.}
+    \label{fig:k-selection}
+\end{figure}
+
+\subsection{Ablation Studies}
+
+\paragraph{Effect of Objective Sampling.}
+Table~\ref{tab:ablation-objectives} shows that multi-scale sampling outperforms uniform-only or extreme-only approaches.
+
+\begin{table}[t]
+\centering
+\caption{Ablation on objective sampling strategy.}
+\label{tab:ablation-objectives}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Sampling Strategy & \# Objectives & NMI & Silhouette \\
+\midrule
+Extremes only & 2 & 0.72 & 0.31 \\
+Uniform only & 20 & 0.89 & 0.36 \\
+\textbf{Multi-scale (ours)} & 20 & \textbf{1.00} & \textbf{0.40} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Effect of Distance Metric.}
+Table~\ref{tab:ablation-distance} compares Wasserstein to alternative distance metrics.
+
+\begin{table}[t]
+\centering
+\caption{Ablation on distance metric.}
+\label{tab:ablation-distance}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Distance Metric & NMI & Silhouette \\
+\midrule
+Cosine (mean gradients) & 0.52 & 0.28 \\
+Euclidean (mean gradients) & 0.61 & 0.32 \\
+MMD (distribution) & 0.84 & 0.35 \\
+\textbf{Wasserstein (ours)} & \textbf{1.00} & \textbf{0.40} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Wasserstein significantly outperforms point-estimate methods (cosine, Euclidean) and slightly outperforms MMD, confirming the value of distributional comparisons.
+
+\paragraph{Effect of Training.}
+Table~\ref{tab:ablation-training} shows that a trained generalist is essential. Random (untrained) agents produce near-zero NMI.
+
+\begin{table}[t]
+\centering
+\caption{Effect of agent training on domain discovery.}
+\label{tab:ablation-training}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Agent & NMI & Silhouette \\
+\midrule
+Random (untrained) & 0.05 & 0.12 \\
+Partial (500K steps) & 0.76 & 0.34 \\
+\textbf{Full (2M steps)} & \textbf{1.00} & \textbf{0.40} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Visualizations}
+
+Figure~\ref{fig:main-results} shows the Wasserstein distance matrix and clustering results.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{figures/wgdd_main_results.png}
+    \caption{WGDD analysis: (a) Wasserstein distance matrix with block structure, (b) clusters vs. edge probability showing perfect separation at $p=0.5$, (c) $k$-selection curve, (d) Pareto alignment scores by MDP structure.}
+    \label{fig:main-results}
+\end{figure}
+
+Figure~\ref{fig:embedding} shows t-SNE embeddings of the distance matrix, colored by predicted clusters (left) and true labels (right). The perfect alignment confirms successful domain recovery.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{figures/wgdd_embedding.png}
+    \caption{t-SNE embedding of Wasserstein distances. Left: predicted clusters. Right: true labels. Perfect alignment confirms domain recovery.}
+    \label{fig:embedding}
+\end{figure}
+
+\subsection{Conflict Analysis}
+
+The conflict tensor analysis (Figure~\ref{fig:conflict}) reveals that the conflict between pure makespan and energy gradients varies across configurations:
+\begin{itemize}
+    \item \textbf{Wide}: Higher average alignment (mean $C^{(0,1)} \approx 0.08$), indicating objectives are more compatible.
+    \item \textbf{LongCP}: Mixed alignment (mean $C^{(0,1)} \approx 0.01$), with higher variance indicating diverse trade-off structures.
+\end{itemize}
+
+This aligns with domain semantics: Wide DAGs allow energy-efficient parallelization without sacrificing time, while LongCP DAGs force explicit time-energy trade-offs.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{figures/wgdd_conflict_analysis.png}
+    \caption{Conflict analysis: (a) Mean gradient conflict by edge probability, (b) Makespan-energy conflict by cluster, (c) Bootstrap co-occurrence matrix showing clustering stability.}
+    \label{fig:conflict}
+\end{figure}
+
+%% ============================================================================
+%% DISCUSSION
+%% ============================================================================
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{Practical Applications.}
+WGDD enables several downstream applications:
+\begin{itemize}
+    \item \textbf{Curriculum Learning}: Train on discovered domains sequentially, starting with aligned (easier) configurations.
+    \item \textbf{Mixture-of-Experts}: Route runtime queries to domain-specific specialists based on cluster assignment.
+    \item \textbf{Domain Adaptation}: Identify which source domain a new configuration resembles for transfer learning.
+\end{itemize}
+
+\paragraph{Computational Cost.}
+WGDD requires $O(N \cdot K \cdot R)$ gradient computations and $O(N^2)$ distance evaluations. For our setup (40 MDPs, 20 objectives, 5 replicates), total gradient computations are 4,000. This is significantly cheaper than training $N$ specialist policies.
+
+\paragraph{Limitations.}
+\begin{itemize}
+    \item \textbf{Generalist Quality}: WGDD requires a sufficiently trained generalist. Poorly trained policies yield uninformative gradients.
+    \item \textbf{Scalability}: The $O(N^2)$ distance matrix becomes expensive for very large MDP sets. Landmark-based approximations could address this.
+    \item \textbf{Two Objectives}: We focus on bi-objective problems. Extension to $m > 2$ objectives requires more sophisticated objective sampling.
+    \item \textbf{Bootstrap Stability}: Our stability score (0.31) suggests some sensitivity to MDP sampling, though final clustering is robust.
+\end{itemize}
+
+\paragraph{Future Work.}
+\begin{itemize}
+    \item \textbf{Online Discovery}: Extend to streaming settings where new configurations arrive over time.
+    \item \textbf{Hierarchical Domains}: Discover nested domain structures for fine-grained curriculum design.
+    \item \textbf{Meta-Learning Integration}: Use discovered domains to initialize MAML or similar meta-learning algorithms.
+    \item \textbf{Theoretical Guarantees}: Provide sample complexity bounds for domain recovery.
+\end{itemize}
+
+%% ============================================================================
+%% CONCLUSION
+%% ============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+We introduced Wasserstein Gradient Domain Discovery (WGDD), the first unsupervised method for identifying strategy domains in multi-objective reinforcement learning. By analyzing distributional differences in policy gradients across objective weightings, WGDD discovers which environment configurations induce similar trade-off structures without requiring domain labels. On a cloud scheduling benchmark, WGDD achieves perfect domain recovery, correctly separating wide-parallel from long-sequential workflows while automatically selecting the number of domains.
+
+WGDD demonstrates that gradient distributions encode sufficient information for unsupervised domain discovery, opening new avenues for curriculum design, mixture-of-experts deployment, and interpretable MORL. Code and data are available at \url{https://anonymous.github.io/wgdd}.
+
+%% ============================================================================
+%% ACKNOWLEDGMENTS
+%% ============================================================================
+\section*{Acknowledgments}
+
+The authors thank the anonymous reviewers for their valuable feedback.
+
+%% ============================================================================
+%% REFERENCES
+%% ============================================================================
+\bibliography{wgdd_references}
+\bibliographystyle{iclr2024_conference}
+
+%% ============================================================================
+%% APPENDIX
+%% ============================================================================
+\appendix
+
+\section{Algorithm Pseudocode}
+\label{app:algorithm}
+
+\begin{algorithm}[t]
+\caption{Wasserstein Gradient Domain Discovery (WGDD)}
+\label{alg:wgdd}
+\begin{algorithmic}[1]
+\REQUIRE Configurations $\{\xi_i\}_{i=1}^N$, trained policy $\pi_\theta$, objectives $\cA_K$, replicates $R$
+\ENSURE Domain assignments $\{c_i\}_{i=1}^N$
+
+\STATE \textbf{// Stage 3: Collect gradient distributions}
+\FOR{$i = 1$ to $N$}
+    \FOR{$k = 1$ to $K$}
+        \FOR{$r = 1$ to $R$}
+            \STATE Sample trajectory $\tau \sim \pi_\theta$ in $\cM_{\xi_i}$
+            \STATE Compute $g_{i,k}^{(r)} = \grad \sum_t \log \pi_\theta(a_t|s_t) G_t^{(\boldsymbol{\alpha}_k)}$
+        \ENDFOR
+    \ENDFOR
+\ENDFOR
+
+\STATE \textbf{// Stage 4: Compute Wasserstein distances}
+\STATE Fit PCA on all gradients, project to $D$ dimensions
+\FOR{$i = 1$ to $N$}
+    \FOR{$j = i+1$ to $N$}
+        \STATE $d_{ij} = \frac{1}{KD} \sum_{k,d} \wass(\tilde{P}_{i,k}^{(d)}, \tilde{P}_{j,k}^{(d)})$
+    \ENDFOR
+\ENDFOR
+
+\STATE \textbf{// Stage 5: Cluster with automatic $k$}
+\STATE $A_{ij} = \exp(-d_{ij}^2 / 2\sigma^2)$, $\sigma = \text{median}(d)$
+\FOR{$k = 2$ to $K_{\max}$}
+    \STATE labels$_k$ = SpectralClustering$(A, k)$
+    \STATE scores$[k]$ = Silhouette$(d, \text{labels}_k)$
+\ENDFOR
+\STATE $k^* = \arg\max_k$ scores$[k]$
+\STATE \textbf{return} labels$_{k^*}$
+
+\end{algorithmic}
+\end{algorithm}
+
+\section{Hyperparameter Sensitivity}
+\label{app:hyperparams}
+
+Table~\ref{tab:hyperparams} shows sensitivity to key hyperparameters.
+
+\begin{table}[t]
+\centering
+\caption{Hyperparameter sensitivity analysis.}
+\label{tab:hyperparams}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Parameter & Range Tested & Best Value & NMI Range \\
+\midrule
+Replicates $R$ & 1--10 & 5 & 0.82--1.00 \\
+Objectives $K$ & 5--30 & 20 & 0.91--1.00 \\
+PCA dims $D$ & 5--20 & 10 & 0.95--1.00 \\
+Rollout steps & 128--512 & 256 & 0.88--1.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The method is robust across reasonable hyperparameter ranges, with NMI $\geq 0.82$ in all tested configurations.
+
+\section{Additional Visualizations}
+\label{app:viz}
+
+Figure~\ref{fig:gradient-pca} shows the PCA projection of all collected gradients, colored by objective weighting. The principal components capture the makespan-energy trade-off axis.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{figures/gradient_subspace_pca_HETERO.png}
+    \caption{PCA projection of gradient distributions. Left: all gradients colored by $\alpha_{\text{makespan}}$. Right: per-MDP mean gradients colored by true domain label.}
+    \label{fig:gradient-pca}
+\end{figure}
+
+\end{document}

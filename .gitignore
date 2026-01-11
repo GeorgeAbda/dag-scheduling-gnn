@@ -1,0 +1,105 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Private scheduler library (copyrighted)
+scheduler/**/*.py
+scheduler/**/*.pyc
+!scheduler/README.md
+!scheduler/__init__.py
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Training outputs
+logs/
+runs/
+wandb/
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+
+# Evaluation outputs
+evals/
+evals_*/
+results/
+outputs/
+
+# Data (keep structure, ignore large files)
+*.npz
+*.npy
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+
+# System
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/
+*.tmp
+*.log
+
+# Compiled
+*.pyc
+*.pyo
+*.so
+*.dylib
+
+# Documentation builds
+docs/_build/
+site/
+
+# Coverage
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pytest
+.pytest_cache/
+
+# Keep these directories but ignore contents
+release_new/logs/*
+!release_new/logs/.gitkeep
+release_new/evals_new_ckpts/*
+!release_new/evals_new_ckpts/.gitkeep

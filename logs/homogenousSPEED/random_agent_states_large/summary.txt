@@ -1,0 +1,21 @@
+Random Agent State Distribution Analysis
+==================================================
+
+Number of agents: 5
+Episodes per domain: 100
+Total states collected: 2250
+State dimensionality: 6
+
+PCA explained variance ratio: [0.36644286 0.31225514]
+PCA cumulative variance: [0.36644286 0.678698  ]
+
+States per agent:
+  agent_0: 450
+  agent_1: 450
+  agent_2: 450
+  agent_3: 450
+  agent_4: 450
+
+States per domain:
+  longcp: 835
+  wide: 1415

@@ -1,0 +1,15 @@
+{
+  "training_seeds": [101001],
+  "all_seeds": [101001],
+  "dataset": {
+    "style": "long_cp",
+    "edge_probability": 0.95,
+    "min_tasks": 10,
+    "max_tasks": 10,
+    "hosts": 10,
+    "vms": 10,
+    "workflow_count": 1,
+    "task_length": {"distribution": "normal", "min": 750, "max": 150000}
+  },
+  "comment": "Extreme sequential: long_cp with p=0.95, bottleneck regime (1.5x pressure), no req_divisor"
+}

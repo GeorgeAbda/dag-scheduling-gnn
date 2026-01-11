@@ -1,0 +1,56 @@
+# Test Adversarial MDP2 Selection
+experiment:
+  name: "test_adversarial"
+  seed: 12345
+  output_dir: "logs"
+  device: "cpu"
+
+training:
+  total_timesteps: 50000  # Short test
+  learning_rate: 0.00025
+  num_envs: 4  # Fewer envs for speed
+  num_steps: 128
+  gamma: 0.99
+  gae_lambda: 0.95
+  num_minibatches: 2
+  update_epochs: 4
+  clip_coef: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  anneal_lr: true
+
+evaluation:
+  test_every_iters: 10
+  robust_eval_alpha: 0.25
+
+domain:
+  longcp_config: "data/rl_configs/two_mdp_longcp_n10_p085.json"
+  wide_config: "data/rl_configs/two_mdp_wide_n10_p005.json"
+  host_specs_file: "data/host_specs.json"
+
+seed_control:
+  mode: "controlled"
+
+variant:
+  name: "hetero"
+
+# Adversarial MDP2 selection (ENABLED - one-time at start)
+adversarial:
+  enabled: true
+  num_candidates: 500  # Search 500 candidates for maximum conflict
+  rollout_steps: 64
+  vary_structure: true
+
+# Multi-objective preferences
+morl:
+  alpha_makespan: 0.5
+  alpha_energy: 0.5
+
+trajectory:
+  enabled: false
+
+logging:
+  tensorboard: true
+  log_every: 5
+  grad_log_every: 5

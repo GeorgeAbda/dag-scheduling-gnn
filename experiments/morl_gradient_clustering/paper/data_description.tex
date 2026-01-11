@@ -1,0 +1,216 @@
+%==============================================================================
+% DATA DESCRIPTION SECTION
+% Add this section to the main paper after Problem Formulation
+%==============================================================================
+
+\section{Multi-Objective Environments and Objective Mismatch}
+\label{sec:data}
+
+We evaluate our method on three multi-objective environments from MO-Gymnasium \citep{alegre2022mo}, each exhibiting fundamentally different reward structures and objective trade-offs. This section describes the environments, their objective functions, and the inherent conflicts between objectives that make domain discovery challenging.
+
+\subsection{Environment Descriptions}
+
+\subsubsection{Deep Sea Treasure (DST)}
+
+Deep Sea Treasure is a grid-world navigation task where an agent controls a submarine searching for underwater treasures. The environment presents a classic multi-objective trade-off between reward magnitude and time efficiency.
+
+\begin{itemize}
+    \item \textbf{State space}: $\mathcal{S} \subset \mathbb{R}^2$ (agent position on grid)
+    \item \textbf{Action space}: $\mathcal{A} = \{\text{up}, \text{down}, \text{left}, \text{right}\}$ (4 discrete actions)
+    \item \textbf{Objective 1} (Treasure): Reward for collecting treasure, with higher values for treasures located further from the starting position
+    \item \textbf{Objective 2} (Time): Penalty of $-1$ per time step, encouraging faster completion
+\end{itemize}
+
+\paragraph{Objective Conflict.} The Pareto front in DST exhibits a clear trade-off: treasures with higher values require more time steps to reach. An agent cannot simultaneously maximize treasure value and minimize time. The optimal policy depends entirely on the preference weight $\alpha$:
+\begin{equation}
+    \alpha \approx 1 \Rightarrow \text{Collect nearest treasure (fast)}
+\end{equation}
+\begin{equation}
+    \alpha \approx 0 \Rightarrow \text{Collect most valuable treasure (slow)}
+\end{equation}
+
+\subsubsection{Four Room}
+
+Four Room is a multi-goal navigation environment where an agent must navigate through a grid divided into four rooms connected by doorways. The environment features two distinct goal locations with separate reward signals.
+
+\begin{itemize}
+    \item \textbf{State space}: $\mathcal{S} \subset \mathbb{R}^{14}$ (agent position, goal positions, room indicators)
+    \item \textbf{Action space}: $\mathcal{A} = \{\text{up}, \text{down}, \text{left}, \text{right}\}$ (4 discrete actions)
+    \item \textbf{Objective 1} (Goal A): Reward for reaching goal location A
+    \item \textbf{Objective 2} (Goal B): Reward for reaching goal location B
+\end{itemize}
+
+\paragraph{Objective Conflict.} Goals A and B are located in different rooms, requiring the agent to choose which goal to prioritize. The conflict is spatial: moving toward one goal necessarily moves away from the other (at least initially). The gradient directions for the two objectives are approximately orthogonal in the policy parameter space.
+
+\subsubsection{Minecart}
+
+Minecart is a resource collection environment where an agent operates a mining cart to collect different types of ore. The agent must balance collecting multiple ore types while managing fuel consumption.
+
+\begin{itemize}
+    \item \textbf{State space}: $\mathcal{S} \subset \mathbb{R}^{7}$ (cart position, velocity, ore quantities, fuel level)
+    \item \textbf{Action space}: $\mathcal{A} = \{0, 1, 2, 3, 4, 5\}$ (6 discrete actions for acceleration/braking)
+    \item \textbf{Objective 1} (Ore Type 1): Reward for collecting ore of type 1
+    \item \textbf{Objective 2} (Ore Type 2): Reward for collecting ore of type 2
+\end{itemize}
+
+\paragraph{Objective Conflict.} Different ore types are located in different regions of the environment. Collecting one type requires navigating away from the other. Additionally, aggressive collection strategies consume more fuel, creating a secondary trade-off between collection rate and sustainability.
+
+\subsection{Objective Mismatch Across Domains}
+
+A key insight of our work is that different environments induce fundamentally different gradient structures, even when using the same policy architecture. We formalize this as \textit{objective mismatch}.
+
+\begin{definition}[Objective Mismatch]
+Two environments $\mathcal{M}_i$ and $\mathcal{M}_j$ exhibit objective mismatch if their policy gradients at a random initialization $\theta_0$ satisfy:
+\begin{equation}
+    \cos\left(\nabla_\theta J(\theta_0; \mathcal{M}_i), \nabla_\theta J(\theta_0; \mathcal{M}_j)\right) \approx 0
+\end{equation}
+That is, the gradients are approximately orthogonal, indicating that optimizing for one environment provides no useful signal for the other.
+\end{definition}
+
+\subsubsection{Quantifying Objective Mismatch}
+
+We measure objective mismatch using the Sliced Wasserstein distance between gradient distributions. Table~\ref{tab:objective_mismatch} summarizes the pairwise distances between environment types.
+
+\begin{table}[h]
+\centering
+\caption{Sliced Wasserstein distance between environment gradient distributions. Lower values indicate more similar gradient structures. Diagonal entries (within-domain) should be near zero for well-clustered domains.}
+\label{tab:objective_mismatch}
+\begin{tabular}{lccc}
+\toprule
+ & DST & FourRoom & Minecart \\
+\midrule
+DST & 1.38 & 1.49 & 1.50 \\
+FourRoom & 1.49 & 0.07 & 0.14 \\
+Minecart & 1.50 & 0.14 & 0.01 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Key Observations:}
+\begin{enumerate}
+    \item \textbf{FourRoom and Minecart are similar}: SW distance of 0.14 indicates these environments have related gradient structures, likely because both involve spatial navigation with discrete goals.
+    
+    \item \textbf{DST is distinct}: SW distance $>1.4$ to both other environments indicates DST's gradient structure is fundamentally different, driven by its sparse reward structure.
+    
+    \item \textbf{DST has high internal variance}: Within-DST distance of 1.38 is unusually high, reflecting the high variance in gradient estimates due to sparse rewards.
+\end{enumerate}
+
+\subsection{Gradient Structure Analysis}
+
+To understand why environments cluster differently, we analyze the gradient structure at the level of individual objectives.
+
+\subsubsection{Gradient Decomposition by Objective}
+
+For a scalarized objective with weight $\alpha$, the policy gradient decomposes as:
+\begin{equation}
+    \nabla_\theta J_\alpha = \alpha \cdot \nabla_\theta J_1 + (1-\alpha) \cdot \nabla_\theta J_2
+\end{equation}
+
+The angle between objective gradients determines the degree of conflict:
+\begin{equation}
+    \theta_{12} = \arccos\left(\frac{\langle \nabla_\theta J_1, \nabla_\theta J_2 \rangle}{\|\nabla_\theta J_1\| \cdot \|\nabla_\theta J_2\|}\right)
+\end{equation}
+
+\begin{table}[h]
+\centering
+\caption{Average angle (degrees) between objective gradients within each environment. Angles near 90° indicate orthogonal (conflicting) objectives; angles near 0° indicate aligned objectives.}
+\label{tab:gradient_angles}
+\begin{tabular}{lc}
+\toprule
+Environment & Avg. Angle $\theta_{12}$ \\
+\midrule
+Deep Sea Treasure & $87.3° \pm 12.1°$ \\
+Four Room & $72.5° \pm 8.4°$ \\
+Minecart & $68.2° \pm 6.7°$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Interpretation:}
+\begin{itemize}
+    \item \textbf{DST}: Near-orthogonal objectives ($\approx 90°$) with high variance, explaining the difficulty in clustering DST instances consistently.
+    \item \textbf{FourRoom}: Moderately conflicting objectives ($\approx 72°$) with lower variance, leading to more consistent gradient signatures.
+    \item \textbf{Minecart}: Similar to FourRoom but with even lower variance, resulting in the tightest within-domain clustering.
+\end{itemize}
+
+\subsection{Implications for Domain Discovery}
+
+The objective mismatch analysis reveals several important properties:
+
+\begin{enumerate}
+    \item \textbf{Gradient signatures are environment-specific}: Each environment type produces a characteristic gradient distribution that can be used for identification.
+    
+    \item \textbf{Sparse rewards increase variance}: Environments like DST with sparse rewards produce high-variance gradients, making clustering more challenging.
+    
+    \item \textbf{Objective conflict angle correlates with clustering difficulty}: Environments with near-orthogonal objectives (high conflict) are harder to cluster consistently.
+    
+    \item \textbf{Similar dynamics produce similar gradients}: FourRoom and Minecart, despite different state/action spaces, share similar gradient structures because both involve spatial navigation.
+\end{enumerate}
+
+\subsection{Experimental Setup Summary}
+
+\begin{table}[h]
+\centering
+\caption{Summary of experimental configuration}
+\label{tab:exp_setup}
+\begin{tabular}{ll}
+\toprule
+Parameter & Value \\
+\midrule
+Environments & DST, FourRoom, Minecart \\
+Instances per environment & 10 \\
+Total domains & 30 \\
+Policy architecture & Shared encoder + policy head \\
+Latent dimension & 64 \\
+Gradient samples per domain & 50 \\
+Alpha values & $\{0.0, 0.25, 0.5, 0.75, 1.0\}$ \\
+Episodes per gradient & 10 \\
+Clustering method & Spectral clustering \\
+Distance metric & Sliced Wasserstein \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The shared encoder architecture ensures that gradients from different environments are directly comparable by mapping all observations to a common 64-dimensional latent space before the shared policy head. Only the gradients of the shared policy head are used for domain comparison, eliminating the confound of different gradient dimensions across environments.
+
+%==============================================================================
+% FIGURE: Objective Mismatch Visualization
+%==============================================================================
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/objective_mismatch.png}
+\caption{Visualization of objective mismatch across MO-Gymnasium environments. (a) Gradient distributions in PCA space, colored by environment type. (b) Sliced Wasserstein distance matrix showing within-domain (diagonal blocks) and cross-domain distances. (c) Objective gradient angles within each environment, illustrating the degree of conflict between objectives.}
+\label{fig:objective_mismatch}
+\end{figure}
+
+%==============================================================================
+% PARETO FRONT VISUALIZATION
+%==============================================================================
+
+\subsection{Pareto Fronts and Trade-off Structure}
+
+Each environment exhibits a distinct Pareto front shape that reflects its underlying trade-off structure.
+
+\paragraph{Deep Sea Treasure.} The Pareto front is discrete, consisting of 10 non-dominated solutions corresponding to the 10 treasure locations. Each point represents a different treasure with a specific (value, time) pair. The front is convex, with diminishing returns for additional time investment.
+
+\paragraph{Four Room.} The Pareto front is approximately linear, as the two goals are independent and the agent can partially satisfy both by visiting them in sequence. The endpoints correspond to prioritizing one goal exclusively.
+
+\paragraph{Minecart.} The Pareto front is continuous and slightly concave, reflecting the continuous trade-off between ore types. The shape depends on the spatial distribution of ore deposits.
+
+\begin{table}[h]
+\centering
+\caption{Pareto front characteristics for each environment}
+\label{tab:pareto_fronts}
+\begin{tabular}{lccc}
+\toprule
+Environment & Front Type & \# Solutions & Convexity \\
+\midrule
+Deep Sea Treasure & Discrete & 10 & Convex \\
+Four Room & Continuous & $\infty$ & Linear \\
+Minecart & Continuous & $\infty$ & Concave \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+These structural differences in the Pareto fronts translate directly into differences in the gradient landscape: discrete fronts (DST) produce high-variance gradients as the optimal policy changes discontinuously with $\alpha$, while continuous fronts (FourRoom, Minecart) produce smoother gradient variations.

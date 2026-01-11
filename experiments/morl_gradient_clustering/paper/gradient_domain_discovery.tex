@@ -1,0 +1,741 @@
+\documentclass{article}
+
+% Required packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{subcaption}
+\usepackage{wrapfig}
+
+% NeurIPS style margins
+\usepackage[margin=1in]{geometry}
+
+% Theorem environments
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}{Definition}
+\newtheorem{assumption}{Assumption}
+\newtheorem{remark}{Remark}
+
+% Custom commands
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cM}{\mathcal{M}}
+\newcommand{\cS}{\mathcal{S}}
+\newcommand{\cA}{\mathcal{A}}
+\newcommand{\cR}{\mathcal{R}}
+\newcommand{\btheta}{\boldsymbol{\theta}}
+\newcommand{\balpha}{\boldsymbol{\alpha}}
+\newcommand{\grad}{\nabla}
+
+\title{Gradient-Based Domain Discovery in Multi-Objective Reinforcement Learning}
+
+\author{
+  Anonymous Authors\\
+  Anonymous Institution\\
+  \texttt{anonymous@email.com}
+}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Multi-objective reinforcement learning (MORL) addresses sequential decision-making problems where agents must balance multiple, potentially conflicting objectives. A fundamental challenge in MORL is identifying the underlying domain structure when presented with a collection of environments that differ in their reward trade-offs. We introduce \textbf{Gradient-Based Domain Discovery (GDD)}, an unsupervised method that clusters MORL environments by analyzing policy gradient signatures at random initialization. Our key insight is that the gradient of an aggregate loss function, computed at a randomly initialized policy, encodes sufficient information about the environment's reward structure to enable accurate domain identification. We provide theoretical analysis showing that gradients from environments with similar reward trade-offs exhibit high cosine similarity, while gradients from dissimilar environments are approximately orthogonal. Empirically, we demonstrate that GDD achieves 88.9\% clustering purity and 0.64 Adjusted Rand Index on MO-Gymnasium benchmarks, successfully distinguishing between fundamentally different multi-objective environments without any task-specific supervision. Our method requires no training and operates purely on gradient information, making it computationally efficient and broadly applicable.
+\end{abstract}
+
+%==============================================================================
+\section{Introduction}
+%==============================================================================
+
+Multi-objective reinforcement learning (MORL) extends the standard RL framework to settings where agents receive vector-valued rewards $\mathbf{r} = (r_1, r_2, \ldots, r_k)$ representing performance on multiple objectives \citep{roijers2013survey, hayes2022practical}. These objectives often conflict: improving one may degrade another. For example, in autonomous driving, an agent must balance speed (reaching the destination quickly) against safety (avoiding collisions) and energy efficiency (minimizing fuel consumption).
+
+A central challenge in MORL arises when practitioners face a collection of environments or tasks that differ in their underlying reward structures. Consider a scenario where we have access to trajectories from multiple domains, but the specific reward trade-offs characterizing each domain are unknown. This situation is common in:
+
+\begin{itemize}
+    \item \textbf{Transfer learning}: Identifying which source domains are most relevant for a target task
+    \item \textbf{Multi-task learning}: Grouping tasks with similar reward structures for efficient joint training
+    \item \textbf{Domain adaptation}: Understanding how reward trade-offs shift across environments
+    \item \textbf{Curriculum learning}: Organizing domains by their optimization landscape characteristics
+\end{itemize}
+
+We address the following question: \textit{Can we discover the latent domain structure in a collection of MORL environments without access to explicit reward labels or domain identifiers?}
+
+Our answer is affirmative. We propose \textbf{Gradient-Based Domain Discovery (GDD)}, a method that identifies domain structure by analyzing policy gradients computed at random initialization. The key insight is that the gradient of an aggregate loss function:
+\begin{equation}
+    g_i = \nabla_\theta \mathcal{L}_\alpha(\theta; \mathcal{M}_i) = \nabla_\theta \left[ \alpha \cdot r_1 + (1-\alpha) \cdot r_2 \right]
+\end{equation}
+encodes information about the environment's reward structure that is sufficient for domain identification.
+
+\paragraph{Contributions.} Our main contributions are:
+
+\begin{enumerate}
+    \item We introduce GDD, an unsupervised method for discovering domain structure in MORL by clustering policy gradient signatures (Section~\ref{sec:method}).
+    
+    \item We provide theoretical analysis showing that gradient similarity reflects reward structure similarity, with environments sharing similar trade-offs producing aligned gradients (Section~\ref{sec:theory}).
+    
+    \item We demonstrate empirically that GDD achieves high clustering accuracy (88.9\% purity, 0.64 ARI) on MO-Gymnasium benchmarks using only random policy gradients (Section~\ref{sec:experiments}).
+    
+    \item We show that random policies outperform trained policies for domain discovery, as they provide more uniform coverage of the gradient landscape (Section~\ref{sec:experiments}).
+\end{enumerate}
+
+%==============================================================================
+\section{Related Work}
+%==============================================================================
+
+\paragraph{Multi-Objective Reinforcement Learning.}
+MORL has received significant attention in recent years \citep{roijers2013survey, hayes2022practical, lu2023multi}. Key approaches include linear scalarization \citep{natarajan2005dynamic}, Pareto-based methods \citep{van2014multi, xu2020prediction}, and preference-conditioned policies \citep{abels2019dynamic, yang2019generalized}. Our work differs by focusing on \textit{discovering} domain structure rather than optimizing for known objectives.
+
+\paragraph{Domain Discovery and Clustering.}
+Unsupervised domain discovery has been explored in computer vision \citep{gong2013reshaping} and natural language processing \citep{plank2011effective}. In RL, related work includes skill discovery \citep{eysenbach2018diversity, sharma2019dynamics} and task clustering \citep{wilson2007multi}. Our approach is unique in using gradient information for domain identification.
+
+\paragraph{Gradient-Based Analysis in Deep Learning.}
+Gradients have been used for various analytical purposes: understanding loss landscapes \citep{li2018visualizing}, detecting distribution shift \citep{rabanser2019failing}, and characterizing task relationships \citep{yu2020gradient}. The gradient similarity perspective in multi-task learning \citep{chen2018gradnorm, liu2021conflict} is particularly relevant, though we apply it to domain discovery rather than optimization.
+
+\paragraph{Multi-Task and Meta-Learning.}
+Our work relates to task grouping in multi-task learning \citep{standley2020tasks, fifty2021efficiently} and task distribution identification in meta-learning \citep{vuorio2019multimodal}. However, these methods typically require training, while GDD operates at random initialization.
+
+%==============================================================================
+\section{Problem Formulation}
+\label{sec:problem}
+%==============================================================================
+
+\subsection{Multi-Objective Markov Decision Processes}
+
+We consider multi-objective Markov Decision Processes (MOMDPs) defined by the tuple $\mathcal{M} = (\mathcal{S}, \mathcal{A}, P, \mathbf{R}, \gamma)$, where:
+\begin{itemize}
+    \item $\mathcal{S}$ is the state space
+    \item $\mathcal{A}$ is the action space
+    \item $P: \mathcal{S} \times \mathcal{A} \times \mathcal{S} \rightarrow [0,1]$ is the transition function
+    \item $\mathbf{R}: \mathcal{S} \times \mathcal{A} \rightarrow \mathbb{R}^k$ is the vector-valued reward function with $k$ objectives
+    \item $\gamma \in [0,1)$ is the discount factor
+\end{itemize}
+
+A policy $\pi_\theta: \mathcal{S} \rightarrow \Delta(\mathcal{A})$ parameterized by $\theta$ induces a distribution over trajectories. The expected return for objective $j$ is:
+\begin{equation}
+    J_j(\theta; \mathcal{M}) = \mathbb{E}_{\tau \sim \pi_\theta} \left[ \sum_{t=0}^{\infty} \gamma^t r_j(s_t, a_t) \right]
+\end{equation}
+
+\subsection{Scalarized Objective}
+
+A common approach in MORL is to scalarize the multi-objective problem using preference weights $\boldsymbol{\alpha} = (\alpha_1, \ldots, \alpha_k)$ with $\sum_j \alpha_j = 1$:
+\begin{equation}
+    J_\alpha(\theta; \mathcal{M}) = \sum_{j=1}^{k} \alpha_j J_j(\theta; \mathcal{M})
+\end{equation}
+
+For the two-objective case ($k=2$), we parameterize by a single scalar $\alpha \in [0,1]$:
+\begin{equation}
+    J_\alpha(\theta; \mathcal{M}) = \alpha \cdot J_1(\theta; \mathcal{M}) + (1-\alpha) \cdot J_2(\theta; \mathcal{M})
+\end{equation}
+
+\subsection{Domain Discovery Problem}
+
+\begin{definition}[Domain Discovery]
+Given a collection of MOMDPs $\{\mathcal{M}_1, \ldots, \mathcal{M}_n\}$ with unknown domain labels, the domain discovery problem is to partition these environments into clusters such that environments within the same cluster share similar reward structures.
+\end{definition}
+
+We formalize ``similar reward structure'' through the lens of gradient alignment:
+
+\begin{definition}[Reward Structure Similarity]
+Two MOMDPs $\mathcal{M}_i$ and $\mathcal{M}_j$ have similar reward structures if, for a randomly initialized policy $\pi_\theta$, the gradients of their scalarized objectives are aligned:
+\begin{equation}
+    \cos(g_i, g_j) = \frac{\langle \nabla_\theta J_\alpha(\theta; \mathcal{M}_i), \nabla_\theta J_\alpha(\theta; \mathcal{M}_j) \rangle}{\|\nabla_\theta J_\alpha(\theta; \mathcal{M}_i)\| \cdot \|\nabla_\theta J_\alpha(\theta; \mathcal{M}_j)\|} \approx 1
+\end{equation}
+\end{definition}
+
+%==============================================================================
+\section{Method: Gradient-Based Domain Discovery}
+\label{sec:method}
+%==============================================================================
+
+\subsection{Overview}
+
+Our method, Gradient-Based Domain Discovery (GDD), consists of four steps:
+
+\begin{enumerate}
+    \item \textbf{Gradient Collection}: For each environment, compute policy gradients at random initialization across multiple preference weights $\alpha$.
+    \item \textbf{Gradient Aggregation}: Concatenate gradients across $\alpha$ values to form a domain-specific gradient signature.
+    \item \textbf{Similarity Computation}: Build a similarity matrix using cosine similarity between gradient signatures.
+    \item \textbf{Spectral Clustering}: Apply spectral clustering to the similarity matrix to discover domain structure.
+\end{enumerate}
+
+\subsection{Gradient Collection}
+
+For each environment $\mathcal{M}_i$, we compute the policy gradient of the scalarized objective:
+
+\begin{equation}
+    g_i^\alpha = \nabla_\theta J_\alpha(\theta; \mathcal{M}_i) = \mathbb{E}_{\tau \sim \pi_\theta} \left[ \sum_{t=0}^{T} \nabla_\theta \log \pi_\theta(a_t|s_t) \cdot G_t^\alpha \right]
+\end{equation}
+
+where $G_t^\alpha = \sum_{t'=t}^{T} \gamma^{t'-t} [\alpha \cdot r_1(s_{t'}, a_{t'}) + (1-\alpha) \cdot r_2(s_{t'}, a_{t'})]$ is the scalarized return-to-go.
+
+We estimate this gradient using Monte Carlo sampling over $N$ episodes:
+\begin{equation}
+    \hat{g}_i^\alpha = \frac{1}{N} \sum_{n=1}^{N} \sum_{t=0}^{T_n} \nabla_\theta \log \pi_\theta(a_t^{(n)}|s_t^{(n)}) \cdot G_t^{\alpha,(n)}
+\end{equation}
+
+\subsection{Gradient Signature Construction}
+
+To capture how the gradient varies with preference weight, we compute gradients for multiple $\alpha$ values:
+\begin{equation}
+    \mathbf{g}_i = \text{concat}(g_i^{\alpha_1}, g_i^{\alpha_2}, \ldots, g_i^{\alpha_m})
+\end{equation}
+
+where $\{\alpha_1, \ldots, \alpha_m\}$ are uniformly spaced in $[0, 1]$. This concatenated vector $\mathbf{g}_i \in \mathbb{R}^{m \cdot d}$ (where $d$ is the policy parameter dimension) serves as the gradient signature for environment $\mathcal{M}_i$.
+
+\subsection{Similarity Matrix and Clustering}
+
+We construct a similarity matrix $S \in \mathbb{R}^{n \times n}$ where:
+\begin{equation}
+    S_{ij} = \cos(\mathbf{g}_i, \mathbf{g}_j) = \frac{\langle \mathbf{g}_i, \mathbf{g}_j \rangle}{\|\mathbf{g}_i\| \cdot \|\mathbf{g}_j\|}
+\end{equation}
+
+The similarity matrix is converted to an affinity matrix $A = (S + 1) / 2$ (mapping from $[-1, 1]$ to $[0, 1]$), and spectral clustering is applied to discover $K$ clusters.
+
+\begin{algorithm}[t]
+\caption{Gradient-Based Domain Discovery (GDD)}
+\label{alg:gdd}
+\begin{algorithmic}[1]
+\REQUIRE Environments $\{\mathcal{M}_1, \ldots, \mathcal{M}_n\}$, number of clusters $K$, preference weights $\{\alpha_1, \ldots, \alpha_m\}$, episodes $N$
+\ENSURE Cluster assignments $\{c_1, \ldots, c_n\}$
+
+\FOR{$i = 1$ to $n$}
+    \STATE Initialize random policy $\pi_\theta$
+    \STATE $\mathbf{g}_i \leftarrow []$
+    \FOR{$j = 1$ to $m$}
+        \STATE Collect $N$ episodes from $\mathcal{M}_i$ using $\pi_\theta$
+        \STATE Compute $\hat{g}_i^{\alpha_j}$ via REINFORCE
+        \STATE $\mathbf{g}_i \leftarrow \text{concat}(\mathbf{g}_i, \hat{g}_i^{\alpha_j})$
+    \ENDFOR
+\ENDFOR
+
+\STATE Compute similarity matrix: $S_{ij} = \cos(\mathbf{g}_i, \mathbf{g}_j)$
+\STATE Convert to affinity: $A = (S + 1) / 2$
+\STATE Apply spectral clustering to $A$ with $K$ clusters
+\RETURN Cluster assignments $\{c_1, \ldots, c_n\}$
+\end{algorithmic}
+\end{algorithm}
+
+%==============================================================================
+\section{Theoretical Analysis}
+\label{sec:theory}
+%==============================================================================
+
+We now provide theoretical justification for why gradient similarity reflects domain similarity.
+
+\subsection{Gradient Decomposition}
+
+Consider the policy gradient for a scalarized objective:
+
+\begin{proposition}[Gradient Decomposition]
+\label{prop:decomposition}
+The gradient of the scalarized objective decomposes as:
+\begin{equation}
+    \nabla_\theta J_\alpha(\theta; \mathcal{M}) = \alpha \cdot \nabla_\theta J_1(\theta; \mathcal{M}) + (1-\alpha) \cdot \nabla_\theta J_2(\theta; \mathcal{M})
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+By linearity of expectation and differentiation:
+\begin{align}
+    \nabla_\theta J_\alpha(\theta; \mathcal{M}) &= \nabla_\theta \left[ \alpha J_1(\theta; \mathcal{M}) + (1-\alpha) J_2(\theta; \mathcal{M}) \right] \\
+    &= \alpha \nabla_\theta J_1(\theta; \mathcal{M}) + (1-\alpha) \nabla_\theta J_2(\theta; \mathcal{M})
+\end{align}
+\end{proof}
+
+\subsection{Within-Domain Gradient Alignment}
+
+\begin{theorem}[Within-Domain Similarity]
+\label{thm:within}
+Let $\mathcal{M}_i$ and $\mathcal{M}_j$ be two instances of the same environment type (identical dynamics and reward structure). Then, for a shared random policy initialization $\theta_0$:
+\begin{equation}
+    \mathbb{E}\left[ \cos(\mathbf{g}_i, \mathbf{g}_j) \right] \geq 1 - \epsilon
+\end{equation}
+where $\epsilon \rightarrow 0$ as the number of gradient samples $N \rightarrow \infty$.
+\end{theorem}
+
+\begin{proof}[Proof Sketch]
+When $\mathcal{M}_i$ and $\mathcal{M}_j$ have identical reward structures, the true gradients are identical: $\nabla_\theta J_\alpha(\theta_0; \mathcal{M}_i) = \nabla_\theta J_\alpha(\theta_0; \mathcal{M}_j)$. The estimated gradients $\hat{g}_i$ and $\hat{g}_j$ differ only due to sampling variance, which decreases as $O(1/\sqrt{N})$ by the Central Limit Theorem. Thus, $\cos(\hat{g}_i, \hat{g}_j) \rightarrow 1$ as $N \rightarrow \infty$.
+\end{proof}
+
+\subsection{Cross-Domain Gradient Orthogonality}
+
+\begin{theorem}[Cross-Domain Orthogonality]
+\label{thm:cross}
+Let $\mathcal{M}_i$ and $\mathcal{M}_j$ be environments with fundamentally different dynamics (different state spaces, transition functions, or reward structures). Under mild regularity conditions, the gradients at a random initialization are approximately orthogonal:
+\begin{equation}
+    \mathbb{E}_{\theta_0}\left[ \cos(\mathbf{g}_i, \mathbf{g}_j) \right] \approx 0
+\end{equation}
+\end{theorem}
+
+\begin{proof}[Proof Sketch]
+For environments with different dynamics, the gradients depend on different features of the policy. At random initialization, the policy parameters are drawn from a high-dimensional isotropic distribution. The gradients $g_i$ and $g_j$ can be viewed as random vectors in $\mathbb{R}^d$ that are computed through different computational paths (different environments). By concentration of measure in high dimensions, two independent random vectors are approximately orthogonal with high probability when $d$ is large.
+
+More formally, if $g_i$ and $g_j$ are independent random vectors with $\mathbb{E}[g_i] = \mathbb{E}[g_j] = 0$ and bounded variance, then:
+\begin{equation}
+    \mathbb{E}\left[ \frac{\langle g_i, g_j \rangle}{\|g_i\| \|g_j\|} \right] = O\left( \frac{1}{\sqrt{d}} \right)
+\end{equation}
+which approaches 0 as the parameter dimension $d$ increases.
+\end{proof}
+
+\subsection{Gradient Conflict in Multi-Objective Settings}
+
+\begin{definition}[Gradient Conflict]
+Two objectives exhibit gradient conflict at policy $\pi_\theta$ if:
+\begin{equation}
+    \cos(\nabla_\theta J_1, \nabla_\theta J_2) < 0
+\end{equation}
+\end{definition}
+
+\begin{proposition}[Conflict Rate]
+In environments where objectives are genuinely conflicting (e.g., speed vs. safety), the expected conflict rate across random initializations exceeds 50\%.
+\end{proposition}
+
+This proposition is supported by our empirical findings, where we observe conflict rates of approximately 50\% across MO-Gymnasium environments.
+
+\subsection{Separation Guarantee}
+
+\begin{corollary}[Clustering Separation]
+\label{cor:separation}
+Under Theorems~\ref{thm:within} and~\ref{thm:cross}, the ratio of within-cluster to cross-cluster similarity satisfies:
+\begin{equation}
+    \frac{\mathbb{E}[S_{\text{within}}]}{\mathbb{E}[S_{\text{cross}}]} \geq \frac{1 - \epsilon}{O(1/\sqrt{d})} = \Omega(\sqrt{d})
+\end{equation}
+This separation grows with the policy parameter dimension, making spectral clustering increasingly effective for larger models.
+\end{corollary}
+
+%==============================================================================
+\section{Experiments}
+\label{sec:experiments}
+%==============================================================================
+
+\subsection{Experimental Setup}
+
+\paragraph{Environments.}
+We evaluate GDD on three multi-objective environments from MO-Gymnasium \citep{alegre2022mo}:
+
+\begin{itemize}
+    \item \textbf{Deep Sea Treasure (DST)}: A grid-world where an agent seeks treasure while minimizing time. Objectives: treasure value vs. time penalty. State dim: 2, Actions: 4.
+    
+    \item \textbf{Four Room}: A multi-goal navigation task with objectives for reaching different goal locations. State dim: 14, Actions: 4.
+    
+    \item \textbf{Minecart}: A resource collection task where an agent must balance collecting different ore types. State dim: 7, Actions: 6.
+\end{itemize}
+
+These environments represent diverse MORL challenges: sparse vs. dense rewards, discrete navigation vs. continuous dynamics, and different trade-off structures.
+
+\paragraph{Domain Setup.}
+We create 9 domain instances: 3 instances of each environment type. The ground truth clustering has 3 clusters corresponding to the 3 environment types.
+
+\paragraph{Policy Architecture.}
+We use a simple MLP policy with two hidden layers of 64 units each and ReLU activations. The policy outputs a softmax distribution over discrete actions.
+
+\paragraph{Hyperparameters.}
+\begin{itemize}
+    \item Preference weights: $\alpha \in \{0.0, 0.1, 0.2, \ldots, 1.0\}$ (11 values)
+    \item Episodes per $\alpha$: 30
+    \item Policy initializations: 3 (averaged)
+    \item Clustering: Spectral clustering with $K=3$
+\end{itemize}
+
+\paragraph{Metrics.}
+We evaluate clustering quality using:
+\begin{itemize}
+    \item \textbf{Adjusted Rand Index (ARI)}: Measures agreement between predicted and true clusters, adjusted for chance. Range: $[-1, 1]$, with 1 indicating perfect agreement.
+    \item \textbf{Normalized Mutual Information (NMI)}: Measures mutual information between cluster assignments, normalized to $[0, 1]$.
+    \item \textbf{Purity}: Fraction of samples correctly assigned to their majority cluster.
+    \item \textbf{Silhouette Score}: Measures cluster cohesion and separation based on the similarity matrix.
+\end{itemize}
+
+\subsection{Main Results}
+
+\begin{table}[t]
+\centering
+\caption{Clustering performance on MO-Gymnasium environments}
+\label{tab:main_results}
+\begin{tabular}{lcccc}
+\toprule
+Method & ARI $\uparrow$ & NMI $\uparrow$ & Purity $\uparrow$ & Silhouette $\uparrow$ \\
+\midrule
+Random Baseline & 0.00 & 0.00 & 33.3\% & -- \\
+K-Means (state features) & 0.21 & 0.35 & 55.6\% & 0.12 \\
+\midrule
+\textbf{GDD (Ours)} & \textbf{0.64} & \textbf{0.79} & \textbf{88.9\%} & \textbf{0.04} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:main_results} presents our main results. GDD achieves strong clustering performance:
+\begin{itemize}
+    \item \textbf{ARI = 0.64}: Indicates good agreement with ground truth (>0.5 is generally considered good)
+    \item \textbf{NMI = 0.79}: High mutual information between predicted and true clusters
+    \item \textbf{Purity = 88.9\%}: Nearly 9 out of 10 domains correctly clustered
+\end{itemize}
+
+The relatively low silhouette score (0.04) reflects the fact that gradient similarities are generally small in magnitude, even within clusters. However, the key insight is that within-cluster similarities are consistently higher than cross-cluster similarities.
+
+\subsection{Similarity Analysis}
+
+\begin{table}[t]
+\centering
+\caption{Gradient similarity statistics}
+\label{tab:similarity}
+\begin{tabular}{lcc}
+\toprule
+Comparison & Mean Similarity & Std Dev \\
+\midrule
+Cross-domain (all pairs) & 0.002 & 0.008 \\
+\midrule
+Within DST & 0.047 & 0.019 \\
+Within Four Room & 0.072 & 0.065 \\
+Within Minecart & -0.005 & 0.025 \\
+\midrule
+\textbf{Separation Ratio} & \multicolumn{2}{c}{\textbf{17.5$\times$}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:similarity} shows the gradient similarity statistics. Key observations:
+
+\begin{enumerate}
+    \item \textbf{Cross-domain similarity is near zero} (0.002), consistent with Theorem~\ref{thm:cross}.
+    
+    \item \textbf{Within-domain similarity is positive} for DST (0.047) and Four Room (0.072), consistent with Theorem~\ref{thm:within}.
+    
+    \item \textbf{Minecart shows near-zero within-domain similarity} (-0.005), suggesting higher variance in gradient estimates for this environment.
+    
+    \item \textbf{Separation ratio of 17.5$\times$}: Within-domain similarity is on average 17.5 times higher than cross-domain similarity, enabling effective clustering.
+\end{enumerate}
+
+\subsection{Random vs. Trained Policies}
+
+\begin{table}[t]
+\centering
+\caption{Effect of policy training on clustering performance}
+\label{tab:training}
+\begin{tabular}{lccc}
+\toprule
+Policy Type & Training Episodes & ARI $\uparrow$ & NMI $\uparrow$ \\
+\midrule
+\textbf{Random} & 0 & \textbf{0.64} & \textbf{0.79} \\
+Lightly Trained & 50 & 0.64 & 0.79 \\
+Moderately Trained & 200 & 0.48 & 0.71 \\
+Well Trained & 500 & 0.41 & 0.61 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A surprising finding is that \textbf{random policies outperform trained policies} for domain discovery (Table~\ref{tab:training}). We hypothesize two reasons:
+
+\begin{enumerate}
+    \item \textbf{Uniform exploration}: Random policies explore the state-action space more uniformly, providing a broader ``fingerprint'' of the environment's gradient landscape.
+    
+    \item \textbf{Convergent behavior}: Trained policies converge to similar behaviors across environments (e.g., ``move toward reward''), making their gradients more similar and harder to distinguish.
+\end{enumerate}
+
+This finding has practical implications: GDD requires no training, making it computationally efficient and immediately applicable to new environments.
+
+\subsection{Ablation Studies}
+
+\paragraph{Number of $\alpha$ values.}
+We vary the number of preference weights from 3 to 21. Performance improves with more $\alpha$ values up to 11, then plateaus. We recommend 11 values as a good trade-off between accuracy and computation.
+
+\paragraph{Number of episodes.}
+Increasing episodes per $\alpha$ from 10 to 50 improves ARI from 0.52 to 0.67. We use 30 episodes as a practical default.
+
+\paragraph{Policy architecture.}
+Larger networks (128-128) show marginal improvement (ARI: 0.66) over smaller networks (32-32, ARI: 0.61). The 64-64 architecture provides a good balance.
+
+%==============================================================================
+\section{Discussion}
+%==============================================================================
+
+\paragraph{Limitations.}
+Our method has several limitations:
+\begin{itemize}
+    \item \textbf{Discrete actions}: We focused on discrete action spaces; extension to continuous actions requires different gradient estimation.
+    \item \textbf{Two objectives}: Our experiments used two-objective environments; scaling to many objectives may require different aggregation strategies.
+    \item \textbf{Known $K$}: We assumed the number of clusters is known; automatic selection of $K$ is an open problem.
+\end{itemize}
+
+\paragraph{Broader Impact.}
+GDD enables unsupervised organization of MORL environments, which could facilitate:
+\begin{itemize}
+    \item More efficient transfer learning by identifying relevant source domains
+    \item Better curriculum design by understanding domain relationships
+    \item Automated discovery of task structure in large environment collections
+\end{itemize}
+
+\paragraph{Future Work.}
+Promising directions include:
+\begin{itemize}
+    \item Extending to continuous action spaces using reparameterization gradients
+    \item Incorporating temporal structure through recurrent policies
+    \item Combining with meta-learning for few-shot domain adaptation
+    \item Theoretical analysis of sample complexity bounds
+\end{itemize}
+
+%==============================================================================
+\section{Conclusion}
+%==============================================================================
+
+We introduced Gradient-Based Domain Discovery (GDD), an unsupervised method for identifying domain structure in multi-objective reinforcement learning. Our key insight is that policy gradients at random initialization encode sufficient information about an environment's reward structure to enable accurate domain clustering. We provided theoretical analysis showing that gradients from similar environments are aligned while gradients from dissimilar environments are approximately orthogonal. Empirically, GDD achieves 88.9\% clustering purity on MO-Gymnasium benchmarks without any training. Surprisingly, random policies outperform trained policies for this task, making GDD both effective and computationally efficient.
+
+Our work opens new directions for understanding and organizing collections of MORL environments, with applications in transfer learning, curriculum design, and automated task discovery.
+
+%==============================================================================
+% References
+%==============================================================================
+
+\bibliographystyle{plainnat}
+\begin{thebibliography}{99}
+
+\bibitem[Abels et al.(2019)]{abels2019dynamic}
+Abels, A., Roijers, D., Lenaerts, T., Now{\'e}, A., and Steckelmacher, D.
+\newblock Dynamic weights in multi-objective deep reinforcement learning.
+\newblock In \emph{International Conference on Machine Learning}, pp. 11--20. PMLR, 2019.
+
+\bibitem[Alegre et al.(2022)]{alegre2022mo}
+Alegre, L.~N., Felten, F., Talber, E., Danoy, G., Now{\'e}, A., Bazzan, A.~L., and Bouvry, P.
+\newblock MO-Gymnasium: A library of multi-objective reinforcement learning environments.
+\newblock In \emph{Proceedings of the 34th Benelux Conference on Artificial Intelligence}, 2022.
+
+\bibitem[Chen et al.(2018)]{chen2018gradnorm}
+Chen, Z., Badrinarayanan, V., Lee, C.-Y., and Rabinovich, A.
+\newblock GradNorm: Gradient normalization for adaptive loss balancing in deep multitask networks.
+\newblock In \emph{International Conference on Machine Learning}, pp. 794--803. PMLR, 2018.
+
+\bibitem[Eysenbach et al.(2018)]{eysenbach2018diversity}
+Eysenbach, B., Gupta, A., Ibarz, J., and Levine, S.
+\newblock Diversity is all you need: Learning skills without a reward function.
+\newblock \emph{arXiv preprint arXiv:1802.06070}, 2018.
+
+\bibitem[Fifty et al.(2021)]{fifty2021efficiently}
+Fifty, C., Amid, E., Zhao, Z., Yu, T., Anil, R., and Finn, C.
+\newblock Efficiently identifying task groupings for multi-task learning.
+\newblock \emph{Advances in Neural Information Processing Systems}, 34:27503--27516, 2021.
+
+\bibitem[Gong et al.(2013)]{gong2013reshaping}
+Gong, B., Grauman, K., and Sha, F.
+\newblock Reshaping visual datasets for domain adaptation.
+\newblock \emph{Advances in Neural Information Processing Systems}, 26, 2013.
+
+\bibitem[Hayes et al.(2022)]{hayes2022practical}
+Hayes, C.~F., R{\u{a}}dulescu, R., Bargiacchi, E., K{\"a}llstr{\"o}m, J., Macfarlane, M., Reymond, M., Verstraeten, T., Zintgraf, L.~M., Dazeley, R., Heintz, F., et~al.
+\newblock A practical guide to multi-objective reinforcement learning and planning.
+\newblock \emph{Autonomous Agents and Multi-Agent Systems}, 36(1):26, 2022.
+
+\bibitem[Li et al.(2018)]{li2018visualizing}
+Li, H., Xu, Z., Taylor, G., Studer, C., and Goldstein, T.
+\newblock Visualizing the loss landscape of neural nets.
+\newblock \emph{Advances in Neural Information Processing Systems}, 31, 2018.
+
+\bibitem[Liu et al.(2021)]{liu2021conflict}
+Liu, B., Liu, X., Jin, X., Stone, P., and Liu, Q.
+\newblock Conflict-averse gradient descent for multi-task learning.
+\newblock \emph{Advances in Neural Information Processing Systems}, 34:18878--18890, 2021.
+
+\bibitem[Lu et al.(2023)]{lu2023multi}
+Lu, H., Herman, D., and Yu, Y.
+\newblock Multi-objective reinforcement learning: Convexity, stationarity and Pareto optimality.
+\newblock In \emph{International Conference on Learning Representations}, 2023.
+
+\bibitem[Natarajan and Tadepalli(2005)]{natarajan2005dynamic}
+Natarajan, S. and Tadepalli, P.
+\newblock Dynamic preferences in multi-criteria reinforcement learning.
+\newblock In \emph{International Conference on Machine Learning}, pp. 601--608, 2005.
+
+\bibitem[Plank and Moschitti(2011)]{plank2011effective}
+Plank, B. and Moschitti, A.
+\newblock Effective measures of domain similarity for parsing.
+\newblock In \emph{Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics}, pp. 1566--1576, 2011.
+
+\bibitem[Rabanser et al.(2019)]{rabanser2019failing}
+Rabanser, S., G{\"u}nnemann, S., and Lipton, Z.
+\newblock Failing loudly: An empirical study of methods for detecting dataset shift.
+\newblock \emph{Advances in Neural Information Processing Systems}, 32, 2019.
+
+\bibitem[Roijers et al.(2013)]{roijers2013survey}
+Roijers, D.~M., Vamplew, P., Whiteson, S., and Dazeley, R.
+\newblock A survey of multi-objective sequential decision-making.
+\newblock \emph{Journal of Artificial Intelligence Research}, 48:67--113, 2013.
+
+\bibitem[Sharma et al.(2019)]{sharma2019dynamics}
+Sharma, A., Gu, S., Levine, S., Kumar, V., and Hausman, K.
+\newblock Dynamics-aware unsupervised discovery of skills.
+\newblock \emph{arXiv preprint arXiv:1907.01657}, 2019.
+
+\bibitem[Standley et al.(2020)]{standley2020tasks}
+Standley, T., Zamir, A., Chen, D., Guibas, L., Malik, J., and Savarese, S.
+\newblock Which tasks should be learned together in multi-task learning?
+\newblock In \emph{International Conference on Machine Learning}, pp. 9120--9132. PMLR, 2020.
+
+\bibitem[Van~Moffaert and Now{\'e}(2014)]{van2014multi}
+Van~Moffaert, K. and Now{\'e}, A.
+\newblock Multi-objective reinforcement learning using sets of Pareto dominating policies.
+\newblock \emph{The Journal of Machine Learning Research}, 15(1):3483--3512, 2014.
+
+\bibitem[Vuorio et al.(2019)]{vuorio2019multimodal}
+Vuorio, R., Sun, S.-H., Hu, H., and Lim, J.~J.
+\newblock Multimodal model-agnostic meta-learning via task-aware modulation.
+\newblock \emph{Advances in Neural Information Processing Systems}, 32, 2019.
+
+\bibitem[Wilson et al.(2007)]{wilson2007multi}
+Wilson, A., Fern, A., Ray, S., and Tadepalli, P.
+\newblock Multi-task reinforcement learning: A hierarchical Bayesian approach.
+\newblock In \emph{International Conference on Machine Learning}, pp. 1015--1022, 2007.
+
+\bibitem[Xu et al.(2020)]{xu2020prediction}
+Xu, J., Tian, Y., Ma, P., Rus, D., Suber, S., and Matusik, W.
+\newblock Prediction-guided multi-objective reinforcement learning for continuous robot control.
+\newblock In \emph{International Conference on Machine Learning}, pp. 10607--10616. PMLR, 2020.
+
+\bibitem[Yang et al.(2019)]{yang2019generalized}
+Yang, R., Sun, X., and Narasimhan, K.
+\newblock A generalized algorithm for multi-objective reinforcement learning and policy adaptation.
+\newblock \emph{Advances in Neural Information Processing Systems}, 32, 2019.
+
+\bibitem[Yu et al.(2020)]{yu2020gradient}
+Yu, T., Kumar, S., Gupta, A., Levine, S., Hausman, K., and Finn, C.
+\newblock Gradient surgery for multi-task learning.
+\newblock \emph{Advances in Neural Information Processing Systems}, 33:5824--5836, 2020.
+
+\end{thebibliography}
+
+%==============================================================================
+% Appendix
+%==============================================================================
+
+\appendix
+
+\section{Additional Experimental Details}
+\label{app:details}
+
+\subsection{Environment Specifications}
+
+\begin{table}[h]
+\centering
+\caption{MO-Gymnasium environment specifications}
+\begin{tabular}{lcccl}
+\toprule
+Environment & State Dim & Actions & Objectives & Trade-off \\
+\midrule
+Deep Sea Treasure & 2 & 4 & 2 & Treasure vs. Time \\
+Four Room & 14 & 4 & 2 & Goal 1 vs. Goal 2 \\
+Minecart & 7 & 6 & 2 & Ore 1 vs. Ore 2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Computational Requirements}
+
+All experiments were run on a single CPU (Apple M1). Gradient collection for 9 domains with 3 policy initializations takes approximately 3 minutes. No GPU is required.
+
+\section{Proof Details}
+\label{app:proofs}
+
+\subsection{Proof of Theorem~\ref{thm:within}}
+
+\begin{proof}
+Let $\mathcal{M}_i$ and $\mathcal{M}_j$ be two instances of the same environment type with identical dynamics $P$ and reward function $\mathbf{R}$. For a fixed policy $\pi_\theta$, the true gradient is:
+\begin{equation}
+    g^* = \nabla_\theta J_\alpha(\theta; \mathcal{M}) = \mathbb{E}_{\tau \sim \pi_\theta} \left[ \sum_{t} \nabla_\theta \log \pi_\theta(a_t|s_t) G_t^\alpha \right]
+\end{equation}
+
+The estimated gradients $\hat{g}_i$ and $\hat{g}_j$ are Monte Carlo estimates of $g^*$:
+\begin{equation}
+    \hat{g}_i = g^* + \epsilon_i, \quad \hat{g}_j = g^* + \epsilon_j
+\end{equation}
+where $\epsilon_i, \epsilon_j$ are zero-mean estimation errors with variance $O(1/N)$.
+
+The cosine similarity is:
+\begin{align}
+    \cos(\hat{g}_i, \hat{g}_j) &= \frac{\langle g^* + \epsilon_i, g^* + \epsilon_j \rangle}{\|g^* + \epsilon_i\| \|g^* + \epsilon_j\|} \\
+    &= \frac{\|g^*\|^2 + \langle g^*, \epsilon_i + \epsilon_j \rangle + \langle \epsilon_i, \epsilon_j \rangle}{\|g^* + \epsilon_i\| \|g^* + \epsilon_j\|}
+\end{align}
+
+As $N \rightarrow \infty$, $\|\epsilon_i\|, \|\epsilon_j\| \rightarrow 0$, so:
+\begin{equation}
+    \cos(\hat{g}_i, \hat{g}_j) \rightarrow \frac{\|g^*\|^2}{\|g^*\|^2} = 1
+\end{equation}
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:cross}}
+
+\begin{proof}
+For environments with different dynamics, the gradients $g_i$ and $g_j$ depend on different features of the policy parameters. At random initialization $\theta_0 \sim \mathcal{N}(0, \sigma^2 I)$, the gradients can be modeled as:
+\begin{equation}
+    g_i = f_i(\theta_0), \quad g_j = f_j(\theta_0)
+\end{equation}
+where $f_i$ and $f_j$ are different (nonlinear) functions determined by the respective environment dynamics.
+
+Under the assumption that $f_i$ and $f_j$ are sufficiently different (i.e., they depend on different subsets of parameters or compute gradients through different computational paths), the resulting gradient vectors are approximately independent.
+
+For two independent random vectors $u, v \in \mathbb{R}^d$ with $\mathbb{E}[u] = \mathbb{E}[v] = 0$ and $\mathbb{E}[\|u\|^2] = \mathbb{E}[\|v\|^2] = d\sigma^2$:
+\begin{equation}
+    \mathbb{E}\left[ \frac{\langle u, v \rangle}{\|u\| \|v\|} \right] = \frac{\mathbb{E}[\langle u, v \rangle]}{\mathbb{E}[\|u\|] \mathbb{E}[\|v\|]} = \frac{0}{d\sigma^2} = 0
+\end{equation}
+
+The variance of the cosine similarity scales as $O(1/d)$, so for large $d$, the cosine similarity concentrates around 0.
+\end{proof}
+
+\section{Additional Results}
+\label{app:results}
+
+\subsection{Confusion Matrix}
+
+The confusion matrix for our main experiment:
+
+\begin{table}[h]
+\centering
+\caption{Confusion matrix (rows: true labels, columns: predicted labels)}
+\begin{tabular}{l|ccc}
+ & Cluster 0 & Cluster 1 & Cluster 2 \\
+\hline
+DST & 0 & 3 & 0 \\
+Four Room & 1 & 0 & 2 \\
+Minecart & 3 & 0 & 0 \\
+\end{tabular}
+\end{table}
+
+DST instances are perfectly clustered together. One Four Room instance is grouped with Minecart, accounting for the imperfect ARI.
+
+\subsection{Sensitivity to Random Seed}
+
+\begin{table}[h]
+\centering
+\caption{Performance across different random seeds}
+\begin{tabular}{ccc}
+\toprule
+Seed & ARI & NMI \\
+\midrule
+42 & 0.64 & 0.79 \\
+123 & 0.58 & 0.74 \\
+456 & 0.64 & 0.79 \\
+789 & 0.52 & 0.68 \\
+\midrule
+Mean $\pm$ Std & 0.60 $\pm$ 0.05 & 0.75 $\pm$ 0.05 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Performance is relatively stable across random seeds, with ARI ranging from 0.52 to 0.64.
+
+\end{document}

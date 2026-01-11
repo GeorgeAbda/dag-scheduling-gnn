@@ -1,0 +1,2 @@
+makespan,energy,iteration,global_step,checkpoint
+1.2962333829365078,5.506280491368262,170,870400,hetero_mean_pf_it00170_st000870400.pt

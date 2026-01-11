@@ -1,0 +1,832 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage[margin=1in]{geometry}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage{xcolor}
+
+% Theorem environments
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+
+% Custom commands
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Var}{\text{Var}}
+\newcommand{\tr}{\text{tr}}
+\newcommand{\sign}{\text{sign}}
+\newcommand{\argmin}{\arg\min}
+\newcommand{\argmax}{\arg\max}
+\newcommand{\inner}[2]{\langle #1, #2 \rangle}
+\newcommand{\norm}[1]{\left\| #1 \right\|}
+\newcommand{\abs}[1]{\left| #1 \right|}
+
+% Colors for boxes
+\definecolor{defcolor}{RGB}{230,240,255}
+\definecolor{thmcolor}{RGB}{255,245,230}
+\definecolor{remcolor}{RGB}{240,255,240}
+
+\title{\textbf{Gradient-Based Domain Discovery:\\A Theoretical Framework for Unsupervised Domain Identification\\in Multi-Source Learning}}
+
+\author{Technical Report}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We present a theoretical framework for discovering latent domains in multi-source learning using gradient geometry. When training a model on data from multiple sources, the alignment of loss gradients reveals structural relationships between sources. We formalize the notion of \emph{gradient-based domain equivalence}, establish conditions under which domain structure can be recovered from gradient observations, and prove that gradient conflict implies negative transfer. Our framework provides sample complexity bounds for domain discovery and extends naturally to reinforcement learning settings. This work bridges multi-task optimization and domain adaptation by showing that gradient geometry alone, without domain labels, suffices to identify and characterize domain structure.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+%==============================================================================
+\section{Introduction}
+%==============================================================================
+
+\subsection{Motivation}
+
+Consider training a neural network on data from $K$ distinct sources $\mathcal{D} = \{D_1, D_2, \ldots, D_K\}$. These sources may represent different environments in reinforcement learning, different task families in multi-task learning, or different data distributions in domain adaptation.
+
+A fundamental question arises: \emph{Which sources belong to the same underlying domain, and which represent fundamentally different learning problems?}
+
+Traditional approaches require domain labels---explicit annotations indicating which sources share structure. However, in many practical settings:
+\begin{itemize}[noitemsep]
+    \item Domain labels are unavailable or expensive to obtain
+    \item The true domain structure is unknown a priori
+    \item Domain boundaries may be continuous rather than discrete
+\end{itemize}
+
+We propose that \textbf{gradient geometry} provides a natural, unsupervised signal for domain discovery. The key insight is:
+
+\begin{tcolorbox}[colback=defcolor,colframe=blue!50!black,title=Core Insight]
+When training a shared model, sources that belong to the same domain produce \emph{aligned gradients}---they agree on how parameters should change. Sources from different domains produce \emph{conflicting gradients}---improving one hurts the other.
+\end{tcolorbox}
+
+\subsection{Contributions}
+
+This report makes the following theoretical contributions:
+
+\begin{enumerate}
+    \item \textbf{Formal Definition}: We define domain equivalence through gradient cosine similarity and establish its mathematical properties.
+    
+    \item \textbf{Recovery Guarantees}: We prove that under appropriate separability and concentration conditions, spectral clustering on gradient similarities recovers the true domain partition.
+    
+    \item \textbf{Transfer Bounds}: We establish that gradient divergence bounds the transfer gap between sources, providing a computable proxy for domain distance.
+    
+    \item \textbf{Conflict Theorem}: We prove that negative gradient inner products imply negative transfer during joint training.
+    
+    \item \textbf{Sample Complexity}: We derive the number of gradient samples required for reliable domain discovery.
+    
+    \item \textbf{RL Extension}: We extend the framework to reinforcement learning, accounting for policy gradient variance.
+\end{enumerate}
+
+\subsection{Related Work}
+
+\paragraph{Multi-Task Learning.} Methods like PCGrad \cite{yu2020gradient}, CAGrad \cite{liu2021conflict}, and Nash-MTL \cite{navon2022multi} address gradient conflict but assume tasks are known a priori. Our work discovers the task/domain structure itself.
+
+\paragraph{Domain Adaptation.} Classical domain adaptation theory \cite{bendavid2010theory} bounds transfer error using domain divergence. We show gradient divergence serves as a computable proxy without requiring domain labels.
+
+\paragraph{Task Affinity.} Recent work measures task relationships for transfer learning \cite{zamir2018taskonomy}, but typically uses performance-based metrics rather than gradient geometry.
+
+%==============================================================================
+\section{Problem Formulation}
+%==============================================================================
+
+\subsection{Setup and Notation}
+
+\begin{definition}[Data Sources]
+Let $\mathcal{D} = \{D_1, D_2, \ldots, D_K\}$ be a collection of $K$ data sources. Each source $D_k$ is a distribution over input-output pairs $(x, y) \in \mathcal{X} \times \mathcal{Y}$.
+\end{definition}
+
+\begin{definition}[Latent Domain Structure]
+Each source $D_k$ has an unknown \emph{latent domain label} $z_k \in \{1, 2, \ldots, M\}$, where $M \leq K$ is the true number of domains. The domain partition is:
+\begin{equation}
+    \mathcal{C}_m = \{k \in [K] : z_k = m\}, \quad m \in [M]
+\end{equation}
+\end{definition}
+
+\begin{definition}[Model and Loss]
+Let $f_\theta : \mathcal{X} \to \mathcal{Y}$ be a parametric model with parameters $\theta \in \R^d$. For each source $k$, define:
+\begin{align}
+    L_k(\theta) &= \E_{(x,y) \sim D_k}\left[\ell(f_\theta(x), y)\right] \quad \text{(expected loss)} \\
+    g_k(\theta) &= \nabla_\theta L_k(\theta) \in \R^d \quad \text{(gradient)}
+\end{align}
+where $\ell : \mathcal{Y} \times \mathcal{Y} \to \R_+$ is a loss function.
+\end{definition}
+
+\subsection{The Domain Discovery Problem}
+
+\begin{tcolorbox}[colback=thmcolor,colframe=orange!50!black,title=Problem Statement]
+\textbf{Given}: $K$ data sources $\{D_k\}_{k=1}^K$, a model $f_\theta$, and access to gradient estimates $\{\hat{g}_k(\theta)\}$.
+
+\textbf{Goal}: Recover the latent domain partition $\{z_k\}_{k=1}^K$ without supervision.
+\end{tcolorbox}
+
+\subsection{Gradient-Based Domain Metrics}
+
+We now define the key quantities that characterize domain relationships.
+
+\begin{definition}[Gradient Cosine Similarity]
+For sources $i$ and $j$ at parameters $\theta$:
+\begin{equation}
+    S_{ij}(\theta) = \cos(g_i(\theta), g_j(\theta)) = \frac{g_i(\theta)^\top g_j(\theta)}{\norm{g_i(\theta)} \norm{g_j(\theta)}}
+\end{equation}
+\end{definition}
+
+\begin{definition}[Expected Similarity]
+The expected similarity over the training trajectory:
+\begin{equation}
+    \bar{S}_{ij} = \E_{\theta \sim \mathcal{T}}\left[S_{ij}(\theta)\right]
+\end{equation}
+where $\mathcal{T}$ denotes the distribution of parameters during training.
+\end{definition}
+
+\begin{definition}[Conflict Rate]
+The probability of gradient conflict between sources $i$ and $j$:
+\begin{equation}
+    \text{CR}(i, j) = \Prob_{\theta \sim \mathcal{T}}\left[g_i(\theta)^\top g_j(\theta) < 0\right]
+\end{equation}
+\end{definition}
+
+\begin{definition}[Gradient Divergence]
+The expected squared distance between gradients:
+\begin{equation}
+    \text{GD}(i, j) = \E_{\theta \sim \mathcal{T}}\left[\norm{g_i(\theta) - g_j(\theta)}^2\right]
+\end{equation}
+\end{definition}
+
+%==============================================================================
+\section{Domain Equivalence via Gradient Geometry}
+%==============================================================================
+
+\subsection{Formal Definition}
+
+\begin{definition}[Gradient-Based Domain Equivalence]
+\label{def:domain_equiv}
+Two sources $D_i$ and $D_j$ are \emph{gradient-equivalent} (belong to the same domain), denoted $D_i \sim D_j$, if:
+\begin{equation}
+    \bar{S}_{ij} = \E_{\theta}\left[\cos(g_i(\theta), g_j(\theta))\right] > \tau
+\end{equation}
+for a threshold $\tau > 0$.
+\end{definition}
+
+\begin{definition}[Domain Conflict]
+Sources $D_i$ and $D_j$ are in \emph{conflicting domains} if:
+\begin{equation}
+    \text{CR}(i, j) = \Prob_{\theta}\left[g_i(\theta)^\top g_j(\theta) < 0\right] > \gamma
+\end{equation}
+for a threshold $\gamma > 0$.
+\end{definition}
+
+\begin{remark}
+The choice of thresholds $\tau$ and $\gamma$ depends on the application. In practice, we use data-driven methods (e.g., silhouette score) to determine appropriate values.
+\end{remark}
+
+\subsection{Properties of Gradient Equivalence}
+
+\begin{proposition}[Reflexivity]
+For any source $D_k$: $\bar{S}_{kk} = 1$, so $D_k \sim D_k$.
+\end{proposition}
+
+\begin{proposition}[Symmetry]
+$\bar{S}_{ij} = \bar{S}_{ji}$, so $D_i \sim D_j \Leftrightarrow D_j \sim D_i$.
+\end{proposition}
+
+\begin{remark}[Non-Transitivity]
+Gradient equivalence is \emph{not} transitive in general. We may have $D_i \sim D_j$ and $D_j \sim D_k$ but $D_i \not\sim D_k$. This motivates the use of clustering rather than equivalence classes.
+\end{remark}
+
+\subsection{Relationship to Task Similarity}
+
+\begin{proposition}[Gradient Alignment and Optimal Directions]
+\label{prop:alignment}
+If $\bar{S}_{ij} \approx 1$, then the optimal update directions for $L_i$ and $L_j$ are nearly identical. Formally:
+\begin{equation}
+    \bar{S}_{ij} = 1 \implies g_i(\theta) = c \cdot g_j(\theta) \text{ for some } c > 0
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Cosine similarity equals 1 if and only if vectors are positive scalar multiples.
+\end{proof}
+
+%==============================================================================
+\section{Theoretical Guarantees for Domain Recovery}
+%==============================================================================
+
+\subsection{Assumptions}
+
+We require three conditions for successful domain recovery.
+
+\begin{assumption}[Gradient Separability]
+\label{ass:separability}
+There exists a partition of sources into $M$ domains such that within-domain similarity exceeds cross-domain similarity:
+\begin{equation}
+    \min_{i,j \in \mathcal{C}_m} \bar{S}_{ij} > \max_{\substack{i \in \mathcal{C}_m \\ j \in \mathcal{C}_{m'}}} \bar{S}_{ij} \quad \forall m \neq m'
+\end{equation}
+Define the \emph{separability gap}:
+\begin{equation}
+    \Delta = \min_{m} \min_{i,j \in \mathcal{C}_m} \bar{S}_{ij} - \max_{m \neq m'} \max_{\substack{i \in \mathcal{C}_m \\ j \in \mathcal{C}_{m'}}} \bar{S}_{ij}
+\end{equation}
+\end{assumption}
+
+\begin{assumption}[Gradient Concentration]
+\label{ass:concentration}
+Empirical gradient estimates concentrate around their expectations. For $n$ samples from source $k$:
+\begin{equation}
+    \Prob\left[\norm{\hat{g}_k - g_k} > \epsilon\right] \leq 2\exp\left(-\frac{n\epsilon^2}{2\sigma_k^2}\right)
+\end{equation}
+where $\sigma_k^2 = \Var[\nabla_\theta \ell(f_\theta(x), y)]$ for $(x,y) \sim D_k$.
+\end{assumption}
+
+\begin{assumption}[Temporal Stability]
+\label{ass:stability}
+The domain structure is stable across training:
+\begin{equation}
+    \Var_{\theta \sim \mathcal{T}}\left[S_{ij}(\theta)\right] < \nu
+\end{equation}
+for some small $\nu > 0$.
+\end{assumption}
+
+\subsection{Main Recovery Theorem}
+
+\begin{theorem}[Domain Recovery via Spectral Clustering]
+\label{thm:recovery}
+Under Assumptions \ref{ass:separability}--\ref{ass:stability}, let $\hat{S} \in \R^{K \times K}$ be the empirical similarity matrix computed from $N$ gradient samples per source. If:
+\begin{equation}
+    N \geq \frac{C \cdot \sigma^2}{\Delta^2} \cdot \log\left(\frac{K}{\delta}\right)
+\end{equation}
+where $\sigma^2 = \max_k \sigma_k^2$ and $C$ is a universal constant, then spectral clustering on $\hat{S}$ recovers the true domain partition with probability at least $1 - \delta$.
+\end{theorem}
+
+\begin{proof}[Proof Sketch]
+The proof proceeds in three steps:
+
+\textbf{Step 1: Concentration of Similarity Estimates.}
+By Assumption \ref{ass:concentration} and the union bound, with probability $1 - \delta/2$:
+\begin{equation}
+    \abs{\hat{S}_{ij} - \bar{S}_{ij}} \leq O\left(\frac{\sigma}{\sqrt{N}} \cdot \sqrt{\log(K/\delta)}\right) \quad \forall i,j
+\end{equation}
+
+\textbf{Step 2: Perturbation of Similarity Matrix.}
+The true similarity matrix $\bar{S}$ has block structure aligned with domains. By the Davis-Kahan theorem, if $\norm{\hat{S} - \bar{S}}_F$ is small relative to the spectral gap of $\bar{S}$, the leading eigenvectors of $\hat{S}$ are close to those of $\bar{S}$.
+
+\textbf{Step 3: K-means Recovery.}
+The leading $M$ eigenvectors of $\bar{S}$ have a specific structure: rows corresponding to the same domain are identical. By standard k-means analysis, if eigenvector perturbation is small, k-means recovers the correct clustering.
+
+Combining these steps with the sample complexity bound yields the result.
+\end{proof}
+
+\begin{corollary}[Sample Complexity]
+The number of gradient samples required for domain recovery scales as:
+\begin{equation}
+    N = O\left(\frac{\sigma^2}{\Delta^2} \cdot \log K\right)
+\end{equation}
+\end{corollary}
+
+\begin{remark}
+The sample complexity increases when:
+\begin{itemize}[noitemsep]
+    \item Gradient variance $\sigma^2$ is high (noisy estimates)
+    \item Separability gap $\Delta$ is small (domains are similar)
+    \item Number of sources $K$ is large (more comparisons needed)
+\end{itemize}
+\end{remark}
+
+%==============================================================================
+\section{Gradient Conflict and Negative Transfer}
+%==============================================================================
+
+\subsection{The Conflict Theorem}
+
+\begin{theorem}[Gradient Conflict Implies Suboptimal Updates]
+\label{thm:conflict}
+Let $g_i$ and $g_j$ be gradients for sources $i$ and $j$ at parameters $\theta$. Consider the joint gradient step:
+\begin{equation}
+    \theta' = \theta - \eta(g_i + g_j)
+\end{equation}
+If $g_i^\top g_j < 0$, then the update is suboptimal for at least one source compared to its individual gradient step.
+\end{theorem}
+
+\begin{proof}
+The change in loss $L_j$ under the joint update (first-order Taylor approximation):
+\begin{align}
+    L_j(\theta') - L_j(\theta) &\approx g_j^\top (\theta' - \theta) \\
+    &= -\eta g_j^\top (g_i + g_j) \\
+    &= -\eta \left(g_j^\top g_i + \norm{g_j}^2\right)
+\end{align}
+
+Under the individual update $\theta'' = \theta - \eta g_j$:
+\begin{equation}
+    L_j(\theta'') - L_j(\theta) \approx -\eta \norm{g_j}^2
+\end{equation}
+
+The difference in improvement:
+\begin{equation}
+    \left[L_j(\theta') - L_j(\theta)\right] - \left[L_j(\theta'') - L_j(\theta)\right] = -\eta g_j^\top g_i
+\end{equation}
+
+If $g_i^\top g_j < 0$, then $-\eta g_j^\top g_i > 0$, meaning the joint update improves $L_j$ \emph{less} than the individual update. This is negative transfer.
+\end{proof}
+
+\begin{corollary}[Severe Conflict]
+If $g_i^\top g_j < -\norm{g_j}^2$, then the joint update \emph{increases} $L_j$:
+\begin{equation}
+    L_j(\theta') > L_j(\theta)
+\end{equation}
+\end{corollary}
+
+\subsection{Transfer Gap Bound}
+
+\begin{theorem}[Gradient Divergence Bounds Transfer Gap]
+\label{thm:transfer_bound}
+Let $\theta^*_i = \argmin_\theta L_i(\theta)$ be the optimal parameters for source $i$. Assume $L_j$ is $\beta$-smooth. Then:
+\begin{equation}
+    L_j(\theta^*_i) - L_j(\theta^*_j) \leq \frac{\beta}{2} \norm{\theta^*_i - \theta^*_j}^2
+\end{equation}
+
+Furthermore, if the loss landscape is $\mu$-strongly convex:
+\begin{equation}
+    \norm{\theta^*_i - \theta^*_j}^2 \leq \frac{1}{\mu^2} \cdot \text{GD}(i, j)
+\end{equation}
+
+Combining:
+\begin{equation}
+    L_j(\theta^*_i) - L_j(\theta^*_j) \leq \frac{\beta}{2\mu^2} \cdot \text{GD}(i, j)
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+The first inequality follows from $\beta$-smoothness:
+\begin{equation}
+    L_j(\theta^*_i) \leq L_j(\theta^*_j) + g_j(\theta^*_j)^\top(\theta^*_i - \theta^*_j) + \frac{\beta}{2}\norm{\theta^*_i - \theta^*_j}^2
+\end{equation}
+Since $\theta^*_j$ is optimal for $L_j$, we have $g_j(\theta^*_j) = 0$.
+
+For the second inequality, by $\mu$-strong convexity of both losses:
+\begin{equation}
+    g_i(\theta) - g_j(\theta) = \nabla(L_i - L_j)(\theta)
+\end{equation}
+At the respective optima, the gradient difference relates to the parameter difference through the curvature.
+\end{proof}
+
+\begin{remark}
+This theorem shows that \textbf{gradient divergence is a computable proxy for transfer gap}. High gradient divergence implies poor transfer, which implies different domains.
+\end{remark}
+
+%==============================================================================
+\section{Gradient Subspace Analysis}
+%==============================================================================
+
+\subsection{The Gradient Manifold}
+
+At each parameter setting $\theta$, the gradients $\{g_1(\theta), \ldots, g_K(\theta)\}$ form a point cloud in $\R^d$. We analyze the structure of this cloud.
+
+\begin{definition}[Gradient Subspace]
+For domain $m$, define the gradient subspace as the span of gradients from sources in that domain:
+\begin{equation}
+    V_m(\theta) = \text{span}\{g_k(\theta) : k \in \mathcal{C}_m\}
+\end{equation}
+\end{definition}
+
+\begin{proposition}[Low-Dimensional Structure]
+If sources in domain $m$ share a common task structure, their gradients approximately lie in a low-dimensional subspace:
+\begin{equation}
+    g_k(\theta) = P_{V_m} g_k(\theta) + \epsilon_k, \quad \norm{\epsilon_k} \ll \norm{g_k}
+\end{equation}
+where $P_{V_m}$ is the projection onto $V_m$.
+\end{proposition}
+
+\subsection{Subspace-Based Domain Distance}
+
+\begin{definition}[Principal Angles]
+The principal angles $\phi_1, \ldots, \phi_r$ between subspaces $V_m$ and $V_{m'}$ (where $r = \min(\dim V_m, \dim V_{m'})$) are defined recursively:
+\begin{align}
+    \cos(\phi_1) &= \max_{u \in V_m, v \in V_{m'}} \frac{u^\top v}{\norm{u}\norm{v}} = u_1^\top v_1 \\
+    \cos(\phi_k) &= \max_{\substack{u \in V_m, v \in V_{m'} \\ u \perp u_1, \ldots, u_{k-1} \\ v \perp v_1, \ldots, v_{k-1}}} \frac{u^\top v}{\norm{u}\norm{v}}
+\end{align}
+\end{definition}
+
+\begin{definition}[Subspace Distance]
+The distance between gradient subspaces:
+\begin{equation}
+    d_{\text{sub}}(m, m') = \sqrt{\sum_{i=1}^r \sin^2(\phi_i)} = \norm{P_{V_m} - P_{V_{m'}}}_F
+\end{equation}
+\end{definition}
+
+\begin{proposition}[Subspace Distance and Domain Separation]
+\begin{itemize}
+    \item $d_{\text{sub}}(m, m') = 0 \Leftrightarrow V_m = V_{m'}$ (same gradient subspace, same domain)
+    \item $d_{\text{sub}}(m, m') = \sqrt{r} \Leftrightarrow V_m \perp V_{m'}$ (orthogonal subspaces, maximally different domains)
+\end{itemize}
+\end{proposition}
+
+\subsection{Practical Computation via SVD}
+
+\begin{algorithm}[t]
+\caption{Gradient Subspace Analysis}
+\label{alg:subspace}
+\begin{algorithmic}[1]
+\Require Gradient samples $\{g_k^{(1)}, \ldots, g_k^{(N)}\}$ for each source $k$
+\Ensure Subspace distance matrix $D \in \R^{K \times K}$
+
+\For{each source $k$}
+    \State Form gradient matrix $G_k = [g_k^{(1)}, \ldots, g_k^{(N)}] \in \R^{d \times N}$
+    \State Compute SVD: $G_k = U_k \Sigma_k V_k^\top$
+    \State Keep top $r_k$ singular vectors: $\tilde{U}_k = U_k[:, 1:r_k]$
+\EndFor
+
+\For{each pair $(i, j)$}
+    \State Compute $D_{ij} = \norm{\tilde{U}_i \tilde{U}_i^\top - \tilde{U}_j \tilde{U}_j^\top}_F$
+\EndFor
+
+\State \Return $D$
+\end{algorithmic}
+\end{algorithm}
+
+%==============================================================================
+\section{Fisher Information Perspective}
+%==============================================================================
+
+\subsection{Fisher Information Matrix}
+
+\begin{definition}[Fisher Information Matrix]
+For source $k$ at parameters $\theta$:
+\begin{equation}
+    F_k(\theta) = \E_{(x,y) \sim D_k}\left[g_k g_k^\top\right] = \E\left[\nabla_\theta \log p(y|x,\theta) \nabla_\theta \log p(y|x,\theta)^\top\right]
+\end{equation}
+\end{definition}
+
+The Fisher Information Matrix captures the \emph{curvature} of the loss landscape---how sensitive the model is to parameter changes.
+
+\subsection{Fisher-Based Domain Distance}
+
+\begin{definition}[Fisher Divergence]
+The symmetric KL divergence in parameter space:
+\begin{equation}
+    d_F(i, j) = \frac{1}{2}\left[\tr(F_i^{-1} F_j) + \tr(F_j^{-1} F_i)\right] - d
+\end{equation}
+where $d$ is the parameter dimension.
+\end{definition}
+
+\begin{theorem}[Fisher Divergence and Domain Similarity]
+If $d_F(i, j) = 0$, then $F_i = F_j$, meaning sources $i$ and $j$ have identical loss landscape curvature and belong to the same domain.
+\end{theorem}
+
+\subsection{Why Fisher Matters Beyond Gradients}
+
+\begin{remark}
+Gradients capture the \emph{direction} of steepest descent. Fisher captures \emph{curvature}---how the loss changes as we move in parameter space.
+
+Two sources may have:
+\begin{itemize}
+    \item Similar gradient directions but different curvatures
+    \item Same optimal direction but different optimal step sizes
+    \item Similar local behavior but different generalization
+\end{itemize}
+
+Fisher-based analysis captures these distinctions.
+\end{remark}
+
+\subsection{Practical Approximation}
+
+Computing the full Fisher matrix is expensive ($O(d^2)$ storage). We use the diagonal approximation:
+
+\begin{equation}
+    \hat{F}_k = \text{diag}\left(\E\left[g_k \odot g_k\right]\right)
+\end{equation}
+
+This is the approach used in Elastic Weight Consolidation (EWC) and related methods.
+
+%==============================================================================
+\section{Extension to Reinforcement Learning}
+%==============================================================================
+
+\subsection{Policy Gradient Setting}
+
+In reinforcement learning, we optimize a policy $\pi_\theta$ to maximize expected return:
+\begin{equation}
+    J_k(\theta) = \E_{\tau \sim \pi_\theta, \text{env}_k}\left[\sum_{t=0}^T \gamma^t r_t\right]
+\end{equation}
+
+The policy gradient for environment $k$:
+\begin{equation}
+    g_k(\theta) = \E_{\tau}\left[\sum_{t=0}^T \nabla_\theta \log \pi_\theta(a_t|s_t) \cdot \hat{A}_t\right]
+\end{equation}
+where $\hat{A}_t$ is an advantage estimate.
+
+\subsection{Variance Challenge}
+
+\begin{proposition}[High Variance of Policy Gradients]
+The variance of policy gradient estimates is:
+\begin{equation}
+    \Var[\hat{g}_k] = O\left(\frac{\sigma_\pi^2 \cdot \sigma_R^2}{N}\right)
+\end{equation}
+where $\sigma_\pi^2$ is the policy entropy and $\sigma_R^2$ is the return variance.
+\end{proposition}
+
+This high variance makes domain discovery more challenging in RL than in supervised learning.
+
+\subsection{Conditions for RL Domain Discovery}
+
+\begin{assumption}[Signal-to-Noise Ratio]
+\label{ass:snr}
+For reliable domain discovery in RL, we require:
+\begin{equation}
+    \text{SNR} = \frac{\norm{g_i - g_j}^2}{\Var[\hat{g}_i] + \Var[\hat{g}_j]} > c
+\end{equation}
+for some constant $c > 0$.
+\end{assumption}
+
+\begin{theorem}[Sample Complexity for RL Domain Discovery]
+\label{thm:rl_sample}
+Under Assumption \ref{ass:snr}, to distinguish domains $i$ and $j$ with probability $1 - \delta$:
+\begin{equation}
+    N \geq \frac{C \cdot (\sigma_\pi^2 \cdot \sigma_R^2)}{\norm{g_i - g_j}^2} \cdot \log(1/\delta)
+\end{equation}
+\end{theorem}
+
+\subsection{Variance Reduction Strategies}
+
+To improve domain discovery in RL:
+
+\begin{enumerate}
+    \item \textbf{Baseline Subtraction}: Use advantage estimates $\hat{A}_t = R_t - V(s_t)$ to reduce variance.
+    
+    \item \textbf{Averaging}: Collect gradients over many trajectories before computing similarity.
+    
+    \item \textbf{Fisher Weighting}: Use natural policy gradient:
+    \begin{equation}
+        \tilde{g}_k = F_k^{-1} g_k
+    \end{equation}
+    This normalizes by curvature and can reduce effective variance.
+    
+    \item \textbf{Temporal Averaging}: Average similarity estimates over multiple training checkpoints.
+\end{enumerate}
+
+%==============================================================================
+\section{Algorithm and Implementation}
+%==============================================================================
+
+\subsection{Gradient Domain Discovery (GDD) Algorithm}
+
+\begin{algorithm}[t]
+\caption{Gradient Domain Discovery (GDD)}
+\label{alg:gdd}
+\begin{algorithmic}[1]
+\Require Data sources $\{D_k\}_{k=1}^K$, model $f_\theta$, samples per source $N$
+\Ensure Domain partition $\{z_k\}_{k=1}^K$
+
+\State \textbf{Phase 1: Gradient Collection}
+\For{each source $k \in [K]$}
+    \For{$n = 1, \ldots, N$}
+        \State Sample batch from $D_k$
+        \State Compute gradient $\hat{g}_k^{(n)} = \nabla_\theta L_k(\theta)$
+    \EndFor
+\EndFor
+
+\State \textbf{Phase 2: Similarity Matrix Construction}
+\For{each pair $(i, j) \in [K] \times [K]$}
+    \State $\hat{S}_{ij} \gets \frac{1}{N^2} \sum_{m,n} \cos(\hat{g}_i^{(m)}, \hat{g}_j^{(n)})$
+    \State $\widehat{\text{CR}}_{ij} \gets \frac{1}{N^2} \sum_{m,n} \mathbf{1}[\hat{g}_i^{(m)\top} \hat{g}_j^{(n)} < 0]$
+\EndFor
+
+\State \textbf{Phase 3: Clustering}
+\State Compute Laplacian: $L = D - \hat{S}$ where $D_{ii} = \sum_j \hat{S}_{ij}$
+\State Compute top $M$ eigenvectors of $L$ (use silhouette to choose $M$)
+\State Apply k-means to eigenvector rows
+
+\State \Return Domain assignments $\{z_k\}_{k=1}^K$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Computational Complexity}
+
+\begin{proposition}[Complexity of GDD]
+The computational complexity of Algorithm \ref{alg:gdd} is:
+\begin{itemize}
+    \item Gradient collection: $O(K \cdot N \cdot T_{\text{grad}})$ where $T_{\text{grad}}$ is the cost of one gradient computation
+    \item Similarity matrix: $O(K^2 \cdot N^2 \cdot d)$ for pairwise comparisons
+    \item Spectral clustering: $O(K^3)$ for eigendecomposition
+\end{itemize}
+Total: $O(K \cdot N \cdot T_{\text{grad}} + K^2 \cdot N^2 \cdot d + K^3)$
+\end{proposition}
+
+\subsection{Practical Optimizations}
+
+\begin{enumerate}
+    \item \textbf{Gradient Projection}: Project gradients to lower dimension before comparison:
+    \begin{equation}
+        \tilde{g}_k = R \cdot g_k, \quad R \in \R^{p \times d}, \quad p \ll d
+    \end{equation}
+    Random projection preserves cosine similarity with high probability (Johnson-Lindenstrauss).
+    
+    \item \textbf{Last-Layer Gradients}: Use only gradients of the final layer, reducing dimension from $d$ to $d_{\text{last}}$.
+    
+    \item \textbf{Mini-batch Averaging}: Average gradients within each source before pairwise comparison, reducing $N^2$ to $N$.
+\end{enumerate}
+
+%==============================================================================
+\section{Failure Modes and Limitations}
+%==============================================================================
+
+\subsection{When Domain Discovery Fails}
+
+\begin{proposition}[Failure Mode 1: Overlapping Distributions]
+If the within-domain and cross-domain similarity distributions overlap significantly:
+\begin{equation}
+    \max_{i,j \in \mathcal{C}_m} \bar{S}_{ij} < \min_{\substack{i \in \mathcal{C}_m \\ j \in \mathcal{C}_{m'}}} \bar{S}_{ij}
+\end{equation}
+then no algorithm can reliably distinguish domains from gradient information alone.
+\end{proposition}
+
+\begin{proposition}[Failure Mode 2: Non-Stationary Domains]
+If domain relationships change during training:
+\begin{equation}
+    \sign(g_i(\theta_t)^\top g_j(\theta_t)) \neq \sign(g_i(\theta_{t'})^\top g_j(\theta_{t'}))
+\end{equation}
+for different training stages $t$ and $t'$, then a single clustering is insufficient.
+\end{proposition}
+
+\begin{proposition}[Failure Mode 3: Curse of Dimensionality]
+In very high dimensions, cosine similarity concentrates around zero:
+\begin{equation}
+    \E[\cos(g_i, g_j)] \to 0 \quad \text{as } d \to \infty
+\end{equation}
+for independent random vectors. This makes domain signal harder to detect.
+\end{proposition}
+
+\subsection{Mitigation Strategies}
+
+\begin{enumerate}
+    \item \textbf{For overlapping distributions}: Use multiple metrics (cosine, conflict rate, subspace distance) and ensemble clustering.
+    
+    \item \textbf{For non-stationarity}: Track temporal dynamics with sliding windows; use time-aware clustering.
+    
+    \item \textbf{For high dimensions}: Apply dimensionality reduction (random projection, PCA) before similarity computation.
+\end{enumerate}
+
+%==============================================================================
+\section{Connection to Existing Theory}
+%==============================================================================
+
+\subsection{Multi-Task Learning}
+
+\begin{proposition}[Relationship to Task Relatedness]
+The gradient-based domain definition relates to classical task relatedness \cite{baxter2000model}:
+\begin{equation}
+    \text{Task relatedness} \propto \E[\cos(g_i, g_j)]
+\end{equation}
+High gradient similarity implies tasks share optimal parameter directions.
+\end{proposition}
+
+\subsection{Domain Adaptation}
+
+\begin{proposition}[Relationship to Domain Divergence]
+The gradient divergence $\text{GD}(i,j)$ relates to the $\mathcal{H}$-divergence in domain adaptation theory:
+\begin{equation}
+    d_{\mathcal{H}}(D_i, D_j) \leq C \cdot \sqrt{\text{GD}(i, j)}
+\end{equation}
+under appropriate smoothness conditions.
+\end{proposition}
+
+\subsection{Multi-Objective Optimization}
+
+\begin{proposition}[Relationship to Pareto Optimality]
+Gradient conflict $g_i^\top g_j < 0$ implies that sources $i$ and $j$ define conflicting objectives. The set of Pareto-optimal solutions for $\{L_i, L_j\}$ is non-trivial (not a single point).
+\end{proposition}
+
+%==============================================================================
+\section{Summary and Future Directions}
+%==============================================================================
+
+\subsection{Summary of Theoretical Contributions}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Contribution} & \textbf{Key Result} \\
+\midrule
+Domain Definition & $D_i \sim D_j \Leftrightarrow \E[\cos(g_i, g_j)] > \tau$ \\
+Recovery Guarantee & Spectral clustering recovers domains under separability \\
+Sample Complexity & $N = O(\sigma^2 / \Delta^2 \cdot \log K)$ \\
+Conflict Theorem & $g_i^\top g_j < 0 \Rightarrow$ negative transfer \\
+Transfer Bound & $L_j(\theta^*_i) - L_j(\theta^*_j) \leq C \cdot \text{GD}(i,j)$ \\
+RL Extension & Variance reduction necessary; explicit sample bounds \\
+\bottomrule
+\end{tabular}
+\caption{Summary of main theoretical results.}
+\label{tab:summary}
+\end{table}
+
+\subsection{Open Questions}
+
+\begin{enumerate}
+    \item \textbf{Optimal Thresholds}: How to choose $\tau$ and $\gamma$ optimally for a given problem?
+    
+    \item \textbf{Continuous Domains}: Can we extend to continuous domain structure rather than discrete clusters?
+    
+    \item \textbf{Online Discovery}: Can domains be discovered incrementally during training?
+    
+    \item \textbf{Generalization Bounds}: How does discovered domain structure affect generalization to new sources?
+    
+    \item \textbf{Causal Structure}: Can gradient geometry reveal causal relationships between domains?
+\end{enumerate}
+
+\subsection{Practical Implications}
+
+The theoretical framework suggests several practical applications:
+
+\begin{enumerate}
+    \item \textbf{Automatic Task Grouping}: Cluster tasks by gradient similarity for efficient multi-task learning.
+    
+    \item \textbf{Transfer Prediction}: Use gradient divergence to predict transfer success before training.
+    
+    \item \textbf{Domain-Aware Training}: Apply gradient surgery (PCGrad, CAGrad) at the discovered domain level.
+    
+    \item \textbf{Curriculum Learning}: Order domains by gradient alignment for smoother training.
+\end{enumerate}
+
+%==============================================================================
+% References
+%==============================================================================
+
+\begin{thebibliography}{99}
+
+\bibitem{yu2020gradient}
+T. Yu, S. Kumar, A. Gupta, S. Levine, K. Hausman, and C. Finn.
+\newblock Gradient surgery for multi-task learning.
+\newblock In \emph{NeurIPS}, 2020.
+
+\bibitem{liu2021conflict}
+B. Liu, X. Liu, X. Jin, P. Stone, and Q. Liu.
+\newblock Conflict-averse gradient descent for multi-task learning.
+\newblock In \emph{NeurIPS}, 2021.
+
+\bibitem{navon2022multi}
+A. Navon, A. Shamsian, I. Achituve, H. Maron, K. Kawaguchi, G. Chechik, and E. Fetaya.
+\newblock Multi-task learning as a bargaining game.
+\newblock In \emph{ICML}, 2022.
+
+\bibitem{bendavid2010theory}
+S. Ben-David, J. Blitzer, K. Crammer, A. Kulesza, F. Pereira, and J. W. Vaughan.
+\newblock A theory of learning from different domains.
+\newblock \emph{Machine Learning}, 79(1):151--175, 2010.
+
+\bibitem{baxter2000model}
+J. Baxter.
+\newblock A model of inductive bias learning.
+\newblock \emph{JAIR}, 12:149--198, 2000.
+
+\bibitem{zamir2018taskonomy}
+A. R. Zamir, A. Sax, W. Shen, L. J. Guibas, J. Malik, and S. Savarese.
+\newblock Taskonomy: Disentangling task transfer learning.
+\newblock In \emph{CVPR}, 2018.
+
+\bibitem{sener2018multi}
+O. Sener and V. Koltun.
+\newblock Multi-task learning as multi-objective optimization.
+\newblock In \emph{NeurIPS}, 2018.
+
+\bibitem{chen2018gradnorm}
+Z. Chen, V. Badrinarayanan, C.-Y. Lee, and A. Rabinovich.
+\newblock GradNorm: Gradient normalization for adaptive loss balancing in deep multitask networks.
+\newblock In \emph{ICML}, 2018.
+
+\bibitem{kirkpatrick2017overcoming}
+J. Kirkpatrick et al.
+\newblock Overcoming catastrophic forgetting in neural networks.
+\newblock \emph{PNAS}, 114(13):3521--3526, 2017.
+
+\bibitem{kornblith2019similarity}
+S. Kornblith, M. Norouzi, H. Lee, and G. Hinton.
+\newblock Similarity of neural network representations revisited.
+\newblock In \emph{ICML}, 2019.
+
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,33 @@
+# Default dataset configuration for training config generation
+# These values are used by generate_training_config.py
+
+# Long Critical Path DAGs (high edge probability, sequential structure)
+long_cp:
+  edge_probability: 0.75
+  min_tasks: 12
+  max_tasks: 24
+  hosts: 10
+  vms: 10
+  seed_start: 100001
+  task_length:
+    distribution: normal
+    min: 500
+    max: 100000
+
+# Wide/Sparse DAGs (low edge probability, parallel structure)
+wide:
+  edge_probability: 0.03
+  min_tasks: 24
+  max_tasks: 30
+  hosts: 10
+  vms: 10
+  seed_start: 200001
+  task_length:
+    distribution: normal
+    min: 500
+    max: 100000
+
+# Generation defaults
+generation:
+  num_seeds: 100
+  k: 10

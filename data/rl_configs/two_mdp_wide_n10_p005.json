@@ -1,0 +1,14 @@
+{
+  "training_seeds": [202001],
+  "all_seeds": [202001],
+  "dataset": {
+    "style": "wide",
+    "edge_probability": 0.05,
+    "min_tasks": 10,
+    "max_tasks": 10,
+    "hosts": 10,
+    "vms": 10,
+    "workflow_count": 1,
+    "task_length": {"distribution": "normal", "min": 500, "max": 100000}
+  }
+}

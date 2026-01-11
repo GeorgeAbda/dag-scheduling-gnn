@@ -1,0 +1,178 @@
+
+
+
+
+
+
+\subsection{Concurrency-Aware Greedy Heuristics for Reward Shaping}
+\label{sec:heuristics}
+
+To enable effective credit assignment in our RL agent, we define two integrated heuristic estimates at each state $s$: a makespan estimate $\widehat{T}(s)$ and an active energy estimate $\widehat{E}(s)$. Both heuristics simulate a greedy completion of the remaining workflow while respecting multi-core VM concurrency, memory constraints, and precedence dependencies.
+
+\subsubsection{Concurrency-Aware Makespan Heuristic $\widehat{T}(s)$}
+
+The makespan heuristic $\widehat{T}(s)$ estimates the earliest possible completion time of all tasks from the current state $s$ by constructing a feasible schedule using a greedy earliest-completion-time (ECT) policy with full concurrency awareness.
+
+\paragraph{Algorithm Overview.}
+Given state $s$ at decision epoch $k$:
+\begin{enumerate}
+    \item \textbf{Initialize VM timelines:} For each VM $m\in\mathcal{M}$, construct an event timeline from already-scheduled tasks. Each event is a tuple $(t, \Delta_{\text{mem}}, \Delta_{\text{cores}})$ representing resource changes at time $t$:
+    \begin{itemize}
+        \item Task start at $s_i$: add event $(s_i, +\text{mem}_i, +\text{cpu}_i)$
+        \item Task completion at $c_i$: add event $(c_i, -\text{mem}_i, -\text{cpu}_i)$
+    \end{itemize}
+    Sort events by time for each VM.
+    
+    \item \textbf{Topological ordering:} Build parent/child adjacency from DAG edges $(p\to i)\in\mathcal{E}$. Track completion times $c_i$ for scheduled tasks; initialize $c_i=0$ for unscheduled tasks.
+    
+    \item \textbf{Greedy list scheduling:} While unscheduled tasks remain:
+    \begin{enumerate}
+        \item Identify ready tasks: $\mathcal{R}=\{i:\ \text{all parents scheduled and } i \text{ not yet scheduled}\}$
+        \item For each ready task $i\in\mathcal{R}$:
+        \begin{itemize}
+            \item Compute parent-ready time: $t_{\text{ready}}^i = \max_{p\in\text{Pa}(i)} c_p$
+            \item For each compatible VM $m\in\mathcal{C}_i$:
+            \begin{itemize}
+                \item Find earliest feasible start $s_i^m = \text{EarliestFeasible}(m, t_{\text{ready}}^i, \text{mem}_i, \text{cpu}_i)$ (see below)
+                \item Compute completion: $c_i^m = s_i^m + L_i / s_m$
+            \end{itemize}
+            \item Select VM $m^*$ that minimizes $c_i^{m^*}$ (earliest completion)
+        \end{itemize}
+        \item Schedule task $i$ on VM $m^*$ at $s_i^{m^*}$:
+        \begin{itemize}
+            \item Insert events $(s_i^{m^*}, +\text{mem}_i, +\text{cpu}_i)$ and $(c_i^{m^*}, -\text{mem}_i, -\text{cpu}_i)$ into VM $m^*$'s timeline
+            \item Update $c_i \gets c_i^{m^*}$
+            \item Mark $i$ as scheduled
+        \end{itemize}
+    \end{enumerate}
+    
+    \item \textbf{Return makespan:} $\widehat{T}(s) = \max_{i\in\mathcal{V}} c_i$
+\end{enumerate}
+
+\paragraph{Earliest Feasible Start Time Computation.}
+The function $\text{EarliestFeasible}(m, t_{\text{ready}}, \text{mem}_{\text{req}}, \text{cpu}_{\text{req}})$ finds the earliest time $t\ge t_{\text{ready}}$ when VM $m$ has sufficient residual capacity to accommodate the task:
+
+\begin{algorithm}[H]
+\caption{EarliestFeasible$(m, t_{\text{ready}}, \text{mem}_{\text{req}}, \text{cpu}_{\text{req}})$}
+\begin{algorithmic}[1]
+\STATE Initialize $\text{used\_mem}\gets 0$, $\text{used\_cores}\gets 0$, $\text{idx}\gets 0$
+\STATE Let $\text{events}_m = [(t_1,\Delta_{\text{mem},1},\Delta_{\text{cores},1}), \ldots, (t_n,\Delta_{\text{mem},n},\Delta_{\text{cores},n})]$ be VM $m$'s sorted event list
+\STATE \textbf{Apply all events up to $t_{\text{ready}}$:}
+\WHILE{$\text{idx} < n$ \AND $t_{\text{idx}} \le t_{\text{ready}}$}
+    \STATE $\text{used\_mem} \gets \text{used\_mem} + \Delta_{\text{mem},\text{idx}}$
+    \STATE $\text{used\_cores} \gets \text{used\_cores} + \Delta_{\text{cores},\text{idx}}$
+    \STATE $\text{idx} \gets \text{idx}+1$
+\ENDWHILE
+\STATE \textbf{Check feasibility at $t_{\text{ready}}$ and subsequent event times:}
+\STATE $\text{candidate\_times} \gets [t_{\text{ready}}] \cup \{t_j : j\ge\text{idx}\}$
+\FOR{$t \in \text{candidate\_times}$ (in order)}
+    \IF{$t > t_{\text{ready}}$}
+        \STATE Apply all events at time $t$: update $\text{used\_mem}$, $\text{used\_cores}$
+    \ENDIF
+    \IF{$\text{used\_mem} + \text{mem}_{\text{req}} \le C^{\text{mem}}_m$ \AND $\text{used\_cores} + \text{cpu}_{\text{req}} \le C^{\text{cpu}}_m$}
+        \RETURN $t$
+    \ENDIF
+\ENDFOR
+\STATE \textbf{If no feasible slot found within events, return time after last event}
+\end{algorithmic}
+\end{algorithm}
+
+
+
+\subsubsection{Concurrency-Aware Active Energy Heuristic $\widehat{E}(s)$}
+
+The active energy heuristic $\widehat{E}(s)$ estimates the minimum active energy consumption required to complete all remaining tasks, accounting for concurrent execution and fractional CPU utilization.
+
+\paragraph{Algorithm Overview.}
+For each unscheduled task $i$:
+\begin{enumerate}
+    \item \textbf{Determine parent-ready time:}
+    \[
+    t_{\text{ready}}^i = \max_{p\in\text{Pa}(i)} c_p
+    \]
+    where $c_p$ is known for scheduled tasks and estimated via the makespan heuristic for unscheduled parents.
+    
+    \item \textbf{For each compatible VM $m\in\mathcal{C}_i$:}
+    \begin{enumerate}
+        \item Build VM $m$'s event timeline from already-scheduled tasks (same as makespan heuristic).
+        
+        \item Find earliest feasible start time $s_i^m = \text{EarliestFeasible}(m, t_{\text{ready}}^i, \text{mem}_i, \text{cpu}_i)$.
+        
+        \item Compute execution duration: $\Delta t_i^m = L_i / s_m$.
+        
+        \item Compute completion time: $c_i^m = s_i^m + \Delta t_i^m$.
+        
+        \item \textbf{Integrate energy over execution interval $[s_i^m, c_i^m]$:}
+        \begin{itemize}
+            \item Partition $[s_i^m, c_i^m]$ into segments bounded by VM $m$'s event times within this interval.
+            \item For each segment $[t_j, t_{j+1}]$:
+            \begin{itemize}
+                \item Compute aggregate CPU usage: $\text{used\_cores}_j = \sum_{k\in A_m(t_j)} \text{cpu}_k$ for tasks $A_m(t_j)$ active at $t_j$ (excluding task $i$).
+                \item Add task $i$'s contribution: $\text{total\_cores}_j = \text{used\_cores}_j + \text{cpu}_i$.
+                \item Compute fractional CPU utilization:
+                \[
+                U_m^j = \min\!\left(1,\ \frac{\text{total\_cores}_j}{C^{\text{cpu}}_m}\right)
+                \]
+                \item Compute instantaneous power:
+                \[
+                P_m^j = P^{\text{idle}}_m + (P^{\text{peak}}_m - P^{\text{idle}}_m) \cdot U_m^j
+                \]
+                \item Compute energy rate per MI:
+                \[
+                r_m^j = \frac{P_m^j}{s_m} \quad \text{[Joules per MI]}
+                \]
+                \item Accumulate segment energy:
+                \[
+                E_{\text{seg}}^j = r_m^j \cdot s_m \cdot (t_{j+1} - t_j) = P_m^j \cdot (t_{j+1} - t_j)
+                \]
+            \end{itemize}
+            \item Sum over all segments: $E_i^m = \sum_j E_{\text{seg}}^j$
+        \end{itemize}
+    \end{enumerate}
+    
+    \item \textbf{Select minimum energy VM:} $E_i = \min_{m\in\mathcal{C}_i} E_i^m$
+\end{enumerate}
+
+\paragraph{Total Active Energy Estimate.}
+\[
+\widehat{E}(s) = \sum_{i\in\mathcal{V}} E_i
+\]
+where $E_i$ is the actual energy consumption for scheduled tasks and the minimum estimated energy for unscheduled tasks.
+
+\paragraph{Key Properties.}
+\begin{itemize}
+    \item \textbf{Fractional CPU modeling:} Power scales linearly with CPU utilization $U_m(t)\in[0,1]$, reflecting realistic multi-core behavior where multiple tasks share cores.
+    \item \textbf{Piecewise-constant integration:} Energy is integrated over segments with constant CPU utilization, bounded by task start/completion events.
+    \item \textbf{Concurrency effects:} When task $i$ overlaps with other tasks on VM $m$, the marginal energy accounts for increased utilization $U_m(t)$ during the overlap period.
+    \item \textbf{Optimistic estimate:} Selects the VM that minimizes energy for each task, providing a lower bound on achievable energy consumption.
+    \item \textbf{Consistency with makespan:} Uses the same event-based timeline simulation and feasibility logic as $\widehat{T}(s)$.
+\end{itemize}
+
+\subsubsection{Regret-Based Reward Computation}
+
+At each decision epoch $k$, after taking action $a_k=(i,m)$ and transitioning from $s_k$ to $s_{k+1}$:
+
+\paragraph{Makespan Regret Reduction.}
+\[
+\Delta R^{\text{mk}}_k = -\frac{\widehat{T}(s_{k+1}) - \widehat{T}(s_k)}{\max(\widehat{T}(s_{k+1}), \varepsilon)}
+\]
+\begin{itemize}
+    \item If $\widehat{T}(s_{k+1}) < \widehat{T}(s_k)$: The action reduced the estimated makespan $\Rightarrow$ positive reward.
+    \item Normalization by $\widehat{T}(s_{k+1})$ makes the reward scale-invariant across workflows of different sizes.
+\end{itemize}
+
+\paragraph{Energy Regret Reduction.}
+\[
+\Delta R^{\text{en}}_k = -\frac{\widehat{E}(s_{k+1}) - \widehat{E}(s_k)}{\max(\widehat{E}(s_{k+1}), \varepsilon)}
+\]
+\begin{itemize}
+    \item If $\widehat{E}(s_{k+1}) < \widehat{E}(s_k)$: The action reduced the estimated energy $\Rightarrow$ positive reward.
+    \item Normalization by $\widehat{E}(s_{k+1})$ ensures consistent reward magnitudes across different energy scales.
+\end{itemize}
+
+\paragraph{Combined Reward.}
+\[
+r_k = w_T \cdot \Delta R^{\text{mk}}_k + w_E \cdot \Delta R^{\text{en}}_k
+\]
+where $(w_T, w_E)$ are tunable weights that scalarize the multi-objective problem.
+

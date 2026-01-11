@@ -1,0 +1,15 @@
+{
+  "training_seeds": [101001],
+  "all_seeds": [101001],
+  "dataset": {
+    "style": "long_cp",
+    "edge_probability": 0.85,
+    "min_tasks": 10,
+    "max_tasks": 10,
+    "hosts": 10,
+    "vms": 10,
+    "workflow_count": 1,
+    "task_length": {"distribution": "normal", "min": 750, "max": 150000}
+  },
+  "comment": "Bottleneck regime: increased task_length (1.5x) to create resource contention, no req_divisor"
+}

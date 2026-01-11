@@ -1,0 +1,313 @@
+%%
+%% Complete ACM Paper with ALL sections from TMLR original
+%%
+\documentclass[sigconf]{acmart}
+
+\AtBeginDocument{\providecommand\BibTeX{{Bib\TeX}}}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2025}
+\acmYear{2025}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmConference[Conference '25]{Conference Title}{Month DD--DD, 2025}{City, Country}
+\acmISBN{978-1-4503-XXXX-X/2025/MM}
+
+%% Packages
+\usepackage{tikz}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage[table]{xcolor}
+\usepackage{makecell}
+
+\usetikzlibrary{shapes.arrows, positioning, matrix, backgrounds, arrows.meta}
+\usetikzlibrary{positioning,arrows.meta,calc,fit,decorations.pathreplacing}
+
+%% Colors
+\definecolor{WideColor}{HTML}{1B5E20}
+\definecolor{longcpColor}{HTML}{8BCAD5}
+\definecolor{blueA}{RGB}{33,114,255}
+\definecolor{redA}{RGB}{220,53,69}
+\definecolor{grayA}{RGB}{140,140,140}
+
+%% TikZ styles
+\tikzset{
+  dagNodeLinear/.style = {circle, minimum size=7.5mm, inner sep=0pt, font=\footnotesize\bfseries, draw=blue!40!black, very thick, fill=blue!35},
+  dagNodeGNP/.style = {circle, minimum size=7.5mm, inner sep=0pt, font=\footnotesize\bfseries, draw=red!55!black, very thick, fill=red!65!black},
+  dagEdgeLinear/.style = {->, line width=1.1pt, draw=black!70, >=Latex},
+  dagEdgeGNP/.style = {->, line width=1.0pt, draw=gray!70, >=Latex},
+  dagHalo/.style = {fill=lightsteelblue!50, draw=none, rounded corners=2pt},
+  dagTitle/.style = {font=\bfseries\small, text=black!75},
+}
+
+\title{On the Role of DAG Structure in Energy-Aware Cloud Scheduling: A GNN-Based Deep Reinforcement Learning Approach}
+
+\author{Anonymous Authors}
+\affiliation{\institution{Institution Name}\city{City}\country{Country}}
+\email{author@institution.edu}
+\renewcommand{\shortauthors}{Anonymous et al.}
+
+\begin{abstract}
+Cloud providers must assign heterogeneous compute resources to workflow DAGs while balancing competing objectives such as completion time, cost, and energy consumption. In this work, we study a single-workflow, queue-free scheduling setting and consider a graph neural network (GNN)–based deep reinforcement learning scheduler designed to minimize workflow completion time and energy usage.
+
+We identify specific out-of-distribution (OOD) conditions under which GNN-based deep reinforcement learning schedulers fail, and provide a principled explanation of why these failures occur. Through controlled OOD evaluations, we demonstrate that performance degradation stems from structural mismatches between training and deployment environments, which disrupt message passing and undermine policy generalization. Our analysis exposes fundamental limitations of current GNN-based schedulers and highlights the need for more robust representations to ensure reliable scheduling performance under distribution shifts.
+\end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+ <concept>
+  <concept_id>10010520.10010553.10010562</concept_id>
+  <concept_desc>Computer systems organization~Cloud computing</concept_desc>
+  <concept_significance>500</concept_significance>
+ </concept>
+ <concept>
+  <concept_id>10010147.10010257</concept_id>
+  <concept_desc>Computing methodologies~Machine learning</concept_desc>
+  <concept_significance>500</concept_significance>
+ </concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Computer systems organization~Cloud computing}
+\ccsdesc[500]{Computing methodologies~Machine learning}
+
+\keywords{Cloud Computing, Resource Allocation, Deep Reinforcement Learning, Robustness, Interpretability, Job Scheduling, Graph Neural Networks}
+
+\maketitle
+
+\section{Introduction}
+
+Over the past few years, artificial intelligence and large language models have pushed cloud systems much harder than before. According to \cite{IEA2025DataCenters}, the energy used by data centers keeps growing because of heavier AI training and inference workloads.
+
+Figure~\ref{fig:Pb definition} shows the setting. A workflow is a directed acyclic graph. Nodes are tasks. Edges are data or control dependencies. The scheduler decides, at each step, which ready task should run on which machine.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{figs/cloud-pb.png}
+    \caption{Overview of the workflow scheduling problem in a heterogeneous cloud.}
+    \label{fig:Pb definition}
+    \Description{Diagram showing workflow DAG scheduling on heterogeneous cloud machines.}
+\end{figure}
+
+This paper identifies specific out-of-distribution conditions that cause GNN-based deep RL schedulers to fail, and explains why these failures occur. We define two workflow families (Wide and LongCP) and four host regimes (HS, HP, AL, NA) to systematically study generalization.
+
+\paragraph{Research Questions}
+\begin{itemize}
+    \item \textbf{Q1:} How do DAG structure and host configurations jointly influence learned policy priorities?
+    \item \textbf{Q2:} How does cross-structure generalization vary across host configurations?
+    \item \textbf{Q3:} When do simple heuristics suffice versus when are learned specialists needed?
+\end{itemize}
+
+\paragraph{Contributions}
+\begin{itemize}
+  \item A controlled decomposition of the problem space.
+  \item Systematic cross-structure and cross-regime evaluation.
+  \item An interpretability-focused analysis using state space geometry.
+\end{itemize}
+
+\section{Problem Setup}
+
+We formulate workflow scheduling as a finite-horizon MDP $\mathcal{M}=(\mathcal{S},\mathcal{A},\mathcal{P},\mathcal{R},\gamma)$.
+
+\paragraph{System Model.}
+Let $\mathcal{G}=(\mathcal{V},\mathcal{E})$ be a workflow DAG. Each task has computational size $L_i$, resource demand $\mathbf{d}_i$, and compatibility set $\mathcal{C}_i$. Each VM has capacity, speed, and power parameters.
+
+\paragraph{Reward.}
+We define per-step rewards as regret reductions:
+\[
+r_k = w_T \cdot \Delta R^{\text{mk}}_k + w_E \cdot \Delta R^{\text{en}}_k
+\]
+
+\subsection{Workflow Structure}
+
+Let $\Phi = W/L_{\mathrm{CP}}$ be the parallelism ratio. We focus on:
+\begin{itemize}
+\item \textbf{LongCP:} Deep chains with $\Phi \approx 1$.
+\item \textbf{Wide:} Shallow with $\Phi \gg 1$.
+\end{itemize}
+
+\subsection{Host Regimes}
+
+\paragraph{HS (Homogeneous Speed):} All VMs have same speed, different power. Makespan is fixed, only energy varies.
+
+\paragraph{HP (Homogeneous Power):} All VMs have same power, different speeds. Problem reduces to time minimization.
+
+\paragraph{AL (Aligned):} Faster VMs are also more efficient. Objectives aligned.
+
+\paragraph{NA (Non-Aligned):} Fast VMs consume more power. Real trade-off between time and energy.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\columnwidth]{figs/host_regime_compass.png}
+    \caption{Speed--power host regimes studied in this paper.}
+    \label{fig:host_regime_compass}
+    \Description{Diagram showing four host regime configurations.}
+\end{figure}
+
+\section{Model Architecture}
+
+Our scheduler uses a GNN-based actor-critic architecture with:
+\begin{itemize}
+\item Task and VM encoders (MLPs)
+\item 3-layer GIN backbone for message passing
+\item Actor head: computes logits for (task, VM) pairs
+\item Critic head: outputs scalar value estimate
+\end{itemize}
+
+\begin{figure*}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{figs/gnn_actor_critic_architecture.png}
+    \caption{GIN-based actor-critic scheduler architecture.}
+    \label{fig:gnn_architecture}
+    \Description{Architecture diagram showing GNN model.}
+\end{figure*}
+
+\section{Experimental Results}
+
+\subsection{Training Setup}
+
+We train specialist policies using PPO: 2M timesteps, learning rate $2.5\times 10^{-4}$, batch size 2560, 10 parallel environments.
+
+\subsection{Results}
+
+Table~\ref{tab:hetero-all-hosts} shows cross-domain performance across all regimes.
+
+\begin{table*}[htbp]
+\caption{Cross-domain evaluation of heterogeneous agents across host configurations.
+         Best results for each evaluation domain within a host configuration are highlighted in bold.}
+\label{tab:hetero-all-hosts}
+\centering
+\small
+\begin{tabular}{@{} lll rr @{}}
+\toprule
+Host cfg & Method & Eval Domain & Makespan & \makecell{Active\\Energy (10$^7$ J)} \\
+\midrule
+
+% ---------- HS configuration ----------
+\multicolumn{5}{l}{\itshape HS host configuration} \\
+\rowcolor{blue!8}
+HS & LongCP & LongCP & \textbf{1.51} & 32.38 \\
+\rowcolor{green!8}
+HS & Wide & LongCP & \textbf{1.51} & 22.27 \\
+
+\rowcolor{blue!8}
+HS & LongCP & Wide & \textbf{0.44} & 49.25 \\
+\rowcolor{green!8}
+HS & Wide & Wide & \textbf{0.44} & 35.45 \\
+\addlinespace[0.6em]
+
+% ---------- HP configuration ----------
+\multicolumn{5}{l}{\itshape HP host configuration} \\
+\rowcolor{blue!8}
+HP & LongCP & LongCP & 2.70 & 16.75 \\
+\rowcolor{green!8}
+HP & Wide & LongCP & 2.67 & \textbf{16.74} \\
+
+\rowcolor{blue!8}
+HP & LongCP & Wide & 0.86 & 25.57 \\
+\rowcolor{green!8}
+HP & Wide & Wide & 0.85 & \textbf{25.55} \\
+\addlinespace[0.6em]
+
+% ---------- AL configuration ----------
+\multicolumn{5}{l}{\itshape AL host configuration} \\
+\rowcolor{blue!8}
+AL & LongCP & LongCP & 2.63 & 34.07 \\
+\rowcolor{green!8}
+AL & Wide & LongCP & 2.94 & 38.86 \\
+
+\rowcolor{blue!8}
+AL & LongCP & Wide & 0.82 & 49.38 \\
+\rowcolor{green!8}
+AL & Wide & Wide & 0.88 & 58.28 \\
+\addlinespace[0.6em]
+
+% ---------- NA configuration ----------
+\multicolumn{5}{l}{\itshape NA host configuration} \\
+\rowcolor{blue!8}
+NA & LongCP & LongCP & 2.16 & 41.13 \\
+\rowcolor{green!8}
+NA & Wide & LongCP & 2.78 & 31.31 \\
+
+\rowcolor{blue!8}
+NA & LongCP & Wide & 0.71 & 63.50 \\
+\rowcolor{green!8}
+NA & Wide & Wide & 0.88 & 49.32 \\
+\addlinespace[0.6em]
+
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{HS regime:} Wide specialist achieves lower energy while maintaining identical makespan. Energy-aware heuristic dominates both.
+
+\paragraph{HP regime:} LongCP specialist has consistent advantage. Time-aware heuristic performs best overall.
+
+\paragraph{AL regime:} Wide specialist transfers well to LongCP. Figure~\ref{fig:tsne-state-space} shows LongCP states fall within Wide state space, explaining asymmetric transfer.
+
+\paragraph{NA regime:} Neither agent dominates. Wide achieves lower makespan, LongCP achieves lower energy. Figure~\ref{fig:eaf_specialists} confirms complementary strengths along Pareto frontier.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.6\columnwidth]{figs/state_space_tsne_Wide_vs_longcp.png}
+  \caption{State space coverage: LongCP states (teal) fall within Wide states (green).}
+  \label{fig:tsne-state-space}
+  \Description{t-SNE visualization showing state space overlap.}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\columnwidth]{figs/Wide_cfg_eaf_specialists.png}
+  \caption{EAFs showing complementary strengths in NA regime.}
+  \label{fig:eaf_specialists}
+  \Description{Empirical attainment functions for specialists.}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\columnwidth]{figs/objective_correlation_NAL_AL_combined.png}
+  \caption{Correlation between makespan and active energy for AL (top) and NA (bottom).}
+  \label{fig:objective_correlation_na_al}
+  \Description{Scatter plots showing objective correlations.}
+\end{figure}
+
+\subsection{Analysis}
+
+Figure~\ref{fig:state-visitation-structure} explains why specialists develop different biases. Both optimize the same objective, but DAG structure changes which states are visited during training.
+
+LongCP training concentrates density in low-parallelism regions where energy choices matter. Wide training shifts toward high-parallelism states where time-reducing choices are available. Structure rotates which parts of the trade-off surface are accessible during training.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\columnwidth]{figs/State Space Policy Biases Figure.png}
+  \caption{State visitation patterns under non-aligned hosts showing different policy biases.}
+  \label{fig:state-visitation-structure}
+  \Description{KDE plots showing different state visitation patterns.}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\columnwidth]{figs/actor_landscape_2x2.png}
+  \caption{Value landscapes for AL and NA cases showing gradient directions.}
+  \label{fig:actor_landscape}
+  \Description{2x2 grid showing value landscapes.}
+\end{figure}
+
+\paragraph{Regime-aware routing.}
+We propose classifying the environment by computing variance of speeds, variance of powers, and their correlation, then routing to the appropriate expert: in HS, use energy-minimizing heuristic; in HP, use makespan-minimizing heuristic; in AL, heuristics or LongCP specialist; in NA, deploy both specialists and select based on operational priority (Wide for time, LongCP for energy).
+
+\section{Conclusion}
+
+DAG topology fundamentally shapes learned policy priorities, even under fixed objectives. Generalization failures are structured: performance drops concentrate in specific topology-regime combinations. We propose regime-aware routing: classify the environment and route to appropriate specialists or heuristics.
+
+Future work should explore meta-learning approaches for domain-agnostic training and extend this analysis to queue-based multi-workflow settings.
+
+\begin{acks}
+The authors thank the reviewers for their valuable feedback.
+\end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{tmlr}
+
+\end{document}

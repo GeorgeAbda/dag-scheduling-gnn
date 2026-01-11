@@ -8,6 +8,17 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
 
+palette_hex = [
+    "#BBDEFB",  # slightly darker light blue
+    "#F8BBD0",  # pastel pink
+    "#FFF9C4",  # pale yellow
+    "#FFE0B2",  # soft peach
+    "#C8E6C9",  # light mint green (now at high end)
+]
+
+custom_cmap = LinearSegmentedColormap.from_list("custom_eaf", palette_hex)
+
+
 def load_grid(csv_path: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     df = pd.read_csv(csv_path)
     x = df['x'].to_numpy()
@@ -33,7 +44,17 @@ def transform_axes(X: np.ndarray, Y: np.ndarray, mode: str, eps: float = 1e-6) -
     raise ValueError(f"Unknown axis transform: {mode}")
 
 
-def plot_single(ax, X, Y, A, levels: List[float], cmap='inferno', axis_mode='log10_inv1m', title="", contour_colors='white'):
+def set_axis_labels(ax, axis_mode: str) -> None:
+    """Set human-readable axis labels depending on the visualization transform."""
+    if axis_mode == 'identity':
+        ax.set_xlabel("normalized makespan")
+        ax.set_ylabel("normalized active energy")
+    else:
+        ax.set_xlabel("log10(1/(1 - makespan)) (normalized)")
+        ax.set_ylabel("log10(1/(1 - active_energy)) (normalized)")
+
+
+def plot_single(ax, X, Y, A, levels: List[float], cmap=custom_cmap, axis_mode='identity', title="", contour_colors='white'):
     Xt, Yt = transform_axes(X, Y, axis_mode)
     # pcolormesh expects cell corners; convert grid centers to edges by padding
     # Here we assume X,Y form a rectilinear grid; approximate edges
@@ -50,12 +71,11 @@ def plot_single(ax, X, Y, A, levels: List[float], cmap='inferno', axis_mode='log
         cs = ax.contour(Xt, Yt, A, levels=levels, colors=contour_colors, linewidths=1.2)
         ax.clabel(cs, fmt=lambda v: f"{v:.2g}", inline=True, fontsize=8, colors='k')
     ax.set_title(title)
-    ax.set_xlabel("log10(1/(1 - makespan)) (normalized)")
-    ax.set_ylabel("log10(1/(1 - active_energy)) (normalized)")
+    set_axis_labels(ax, axis_mode)
     return im
 
 
-def plot_ratio(ax, X, Y, A, B, axis_mode='log10_inv1m', title="ratio A/B", vmin=0.5, vmax=2.0):
+def plot_ratio(ax, X, Y, A, B, axis_mode='identity', title="ratio A/B", vmin=0.5, vmax=2.0):
     Xt, Yt = transform_axes(X, Y, axis_mode)
     ratio = (A + 1e-6) / (B + 1e-6)
     ratio = np.clip(ratio, 1e-6, 1e6)
@@ -66,11 +86,10 @@ def plot_ratio(ax, X, Y, A, B, axis_mode='log10_inv1m', title="ratio A/B", vmin=
         return mx
     Xe = to_edges(Xt)
     Ye = to_edges(Yt)
-    im = ax.pcolormesh(Xe, Ye, ratio, shading='auto', cmap='coolwarm', vmin=vmin, vmax=vmax)
+    im = ax.pcolormesh(Xe, Ye, ratio, shading='auto', cmap=custom_cmap, vmin=vmin, vmax=vmax)
     ax.contour(Xt, Yt, ratio, levels=[1.0], colors='k', linewidths=1.2)
     ax.set_title(title)
-    ax.set_xlabel("log10(1/(1 - makespan)) (normalized)")
-    ax.set_ylabel("log10(1/(1 - active_energy)) (normalized)")
+    set_axis_labels(ax, axis_mode)
     return im
 
 
@@ -79,11 +98,10 @@ def main():
     ap.add_argument('--grid', action='append', help='CSV path to an EAF grid (x,y,alpha). Repeatable.')
     ap.add_argument('--name', action='append', help='Name for each grid, same order as --grid.')
     ap.add_argument('--levels', type=str, default='0.5,0.75,0.9', help='Comma-separated contour levels.')
-    ap.add_argument('--axis-mode', type=str, default='log10_inv1m', choices=['identity','log10_inv1m'], help='Axis transform for visualization.')
+    ap.add_argument('--axis-mode', type=str, default='identity', choices=['identity','log10_inv1m'], help='Axis transform for visualization.')
     ap.add_argument('--out', required=True, help='Output image path (png/svg).')
     ap.add_argument('--dpi', type=int, default=180)
     ap.add_argument('--ratio', action='store_true', help='If two grids are given, also draw a ratio panel A/B.')
-    ap.add_argument('--cmap', type=str, default='coolwarm', help='Colormap for regions (e.g., coolwarm, RdBu_r, magma, inferno).')
     args = ap.parse_args()
 
     if not args.grid or len(args.grid) == 0:
@@ -123,7 +141,6 @@ def main():
         im = plot_single(
             ax, X, Y, A,
             levels=levels,
-            cmap=args.cmap,
             axis_mode=args.axis_mode,
             title=f"{name} EAF",
             contour_colors='k',

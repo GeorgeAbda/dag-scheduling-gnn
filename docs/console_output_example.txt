@@ -1,0 +1,95 @@
+================================================================================
+EXAMPLE CONSOLE OUTPUT - Training Script
+================================================================================
+
+When running:
+  python -m scheduler.rl_model.ablation_gnn_traj_main \
+    --exp_name long_cp_specialist \
+    --seed 12345 \
+    --train_only_variant hetero \
+    --longcp_config data/rl_configs/train_long_cp_p08_seeds.json \
+    --total_timesteps 2000000 \
+    --num_envs 10 \
+    --device cpu
+
+--------------------------------------------------------------------------------
+STARTUP
+--------------------------------------------------------------------------------
+
+14:08:18 | INFO | ============================================================
+14:08:18 | INFO | Experiment: long_cp_specialist
+14:08:18 | INFO | Device: cpu
+14:08:18 | INFO | Timesteps: 2,000,000
+14:08:18 | INFO | Environments: 10
+14:08:18 | INFO | Host specs: data/host_specs.json
+14:08:18 | INFO | ============================================================
+14:08:18 | INFO | Training variant: hetero
+14:08:18 | INFO | Device: cpu | Timesteps: 2,000,000 | Envs: 10
+14:08:18 | INFO | LongCP config: gnp_p=0.8, n=[30,50]
+14:08:18 | INFO | Loaded 10 training seeds
+14:08:18 | INFO | Trajectory collection enabled (every 10 iters)
+
+--------------------------------------------------------------------------------
+TRAINING PROGRESS
+--------------------------------------------------------------------------------
+
+Training hetero:   0%|          | 0/2000000 [00:00<?, ?step/s]
+Training hetero:   5%|▌         | 100000/2000000 [02:15<42:45, mk=1250, en=4500, pf=3, ret=-0.18]
+Training hetero:  10%|█         | 200000/2000000 [04:30<40:30, mk=1180, en=4200, pf=5, ret=-0.15]
+Training hetero:  25%|██▌       | 500000/2000000 [11:15<33:45, mk=1050, en=3800, pf=7, ret=-0.12]
+Training hetero:  50%|█████     | 1000000/2000000 [22:30<22:30, mk=980, en=3500, pf=8, ret=-0.09]
+Training hetero:  75%|███████▌  | 1500000/2000000 [33:45<11:15, mk=920, en=3200, pf=6, ret=-0.07]
+Training hetero: 100%|██████████| 2000000/2000000 [45:00<00:00, mk=890, en=3100, pf=5, ret=-0.05]
+
+--------------------------------------------------------------------------------
+COMPLETION
+--------------------------------------------------------------------------------
+
+14:53:18 | INFO | Generating trajectory visualization...
+14:53:20 | INFO | Saved trajectory: logs/.../hetero_trajectory.png
+14:53:20 | INFO | Saved best model (return=-0.0523): logs/.../hetero_best.pt
+14:53:20 | INFO | Saved final model: logs/.../hetero_final.pt
+14:53:20 | INFO | Pareto front: 5 points, mk=[850-950], en=[2900-3400]
+14:53:20 | INFO | Best trade-off: mk=890, en=3100 (hetero_pareto_mk890_en3100_it780.pt)
+14:53:20 | INFO | ============================================================
+14:53:20 | INFO | Training complete!
+14:53:20 | INFO | Results saved to: logs/long_cp_specialist/ablation/per_variant/hetero
+14:53:20 | INFO | ============================================================
+
+--------------------------------------------------------------------------------
+PROGRESS BAR LEGEND
+--------------------------------------------------------------------------------
+
+mk   = Mean makespan (lower is better)
+en   = Mean active energy in Joules (lower is better)
+pf   = Pareto front size (non-dominated solutions found)
+ret  = Best episodic return so far (higher is better, typically negative)
+
+--------------------------------------------------------------------------------
+OUTPUT FILES
+--------------------------------------------------------------------------------
+
+logs/long_cp_specialist/ablation/per_variant/hetero/
+├── hetero_best.pt                      # Best model by return
+├── hetero_final.pt                     # Final model checkpoint
+├── hetero_eval_mean_makespan.csv       # Makespan over training
+├── hetero_eval_mean_active_energy.csv  # Energy over training
+├── hetero_trajectory.png               # Learning trajectory (if enabled)
+└── pareto/                             # Pareto-optimal checkpoints
+    ├── hetero_pareto_front.csv         # Index of all Pareto points
+    ├── hetero_pareto_mk850_en3400_it200.pt   # Low makespan checkpoint
+    ├── hetero_pareto_mk890_en3100_it780.pt   # Balanced checkpoint (knee)
+    ├── hetero_pareto_mk920_en2950_it650.pt   # Mid-range checkpoint
+    └── hetero_pareto_mk950_en2900_it500.pt   # Low energy checkpoint
+
+--------------------------------------------------------------------------------
+PARETO FRONT CSV FORMAT
+--------------------------------------------------------------------------------
+
+makespan,energy,iteration,step,checkpoint
+850.5,3400.2,200,512000,hetero_pareto_mk850_en3400_it200.pt
+890.1,3100.8,780,1996800,hetero_pareto_mk890_en3100_it780.pt
+920.3,2950.5,650,1664000,hetero_pareto_mk920_en2950_it650.pt
+950.7,2900.1,500,1280000,hetero_pareto_mk950_en2900_it500.pt
+
+================================================================================

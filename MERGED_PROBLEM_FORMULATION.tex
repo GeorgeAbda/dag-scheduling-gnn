@@ -1,0 +1,126 @@
+\subsection{Problem Formulation}
+\label{sec:PF}
+
+We build on the MDP formulation of workflow scheduling in \cite{sensors-25-01428} and keep the same state, action and transition structure, but extend the makespan and active energy components to explicitly support concurrent task execution on multi-core VMs.
+
+We formulate workflow scheduling on a virtualized cluster as a finite-horizon Markov Decision Process (MDP)
+$\mathcal{M}=(\mathcal{S},\mathcal{A},\mathcal{P},\mathcal{R},\gamma)$ over decision epochs
+$k=0,1,\dots,K$, aligned with scheduling decisions.
+
+\paragraph{System Model.}
+Let $\mathcal{G}=(\mathcal{V},\mathcal{E})$ be a workflow DAG with tasks $i\in\mathcal{V}$ and precedence edges
+$(p\!\to\!i)\in\mathcal{E}$. Each task has:
+(i) computational size $L_i$ (e.g., MI),
+(ii) resource demand vector $\mathbf{d}_i=(\mathrm{cpu}_i,\mathrm{mem}_i)$,
+(iii) compatibility set $\mathcal{C}_i\subseteq\mathcal{M}$ of admissible VMs.
+Each VM $m\in\mathcal{M}$ has capacity $\mathbf{c}_m=(C^{\mathrm{cpu}}_m,C^{\mathrm{mem}}_m)$,
+processing speed $s_m$ (e.g., MIPS), and power parameters $(P^{\mathrm{idle}}_m,P^{\mathrm{peak}}_m)$.
+
+\paragraph{Decision Epochs and Clock.}
+Let $\tau_k$ denote the simulation clock at decision epoch $k$. Decisions occur when the agent assigns a ready task.
+Between decisions, the environment advances $\tau$ according to scheduled start/finish events implied by previous assignments.
+
+\paragraph{State Space $\mathcal{S}$.}
+A state $s_k\in\mathcal{S}$ summarizes all information needed for optimal control:
+\begin{align*}
+s_k = (&\tau_k; 
+\{\text{task status}_i \in \{\text{not\_ready},\text{ready},\text{running},\text{done}\}\}_{i\in\mathcal{V}};\\
+&\{\text{parent\_ready}_i=\max_{p\in\mathrm{Pa}(i)} c_p\}_{i\in\mathcal{V}};
+\{\text{assignment}_i\in \mathcal{C}_i\cup\{\varnothing\}\}_{i\in\mathcal{V}};
+\{\text{start}_i,\,c_i\}_{i\in\mathcal{V}};\\
+&\{\text{VM residual capacities and active allocations over }[\tau_k,\infty)\}_{m\in\mathcal{M}};
+\{\mathcal{C}_i\}_{i\in\mathcal{V}} ).
+\end{align*}
+The ready set at $\tau_k$ is $\mathcal{R}_k=\{i:\ \text{task status}_i=\text{ready}\}$.
+
+
+\paragraph{Action Space $\mathcal{A}$.}
+An action selects a task--VM pair:
+\[
+a_k=(i,m)\in \mathcal{F}(s_k)\subseteq \mathcal{V}\times\mathcal{M},
+\]
+where the feasible set enforces precedence, compatibility, and capacity:
+\[
+\mathcal{F}(s_k)=\Bigl\{(i,m):\ i\in\mathcal{R}_k,\ m\in\mathcal{C}_i,\ 
+\mathbf{d}_i \preceq \text{residual\_capacity}_m(t)\ \text{for some } t\ge \text{parent\_ready}_i \Bigr\}.
+\]
+Operationally, assigning $(i,m)$ schedules task $i$ on VM $m$ at its
+earliest feasible start time
+\[
+s_i = \min\{t\ge \text{parent\_ready}_i:\ \mathbf{d}_i \preceq \text{residual\_capacity}_m(t)\},
+\qquad
+c_i = s_i + \frac{L_i}{s_m},
+\]
+and updates VM $m$'s capacity timeline accordingly. Action masking enforces $\mathcal{F}(s_k)$.
+
+\paragraph{Transition Kernel $\mathcal{P}$.}
+Given $s_k$ and $a_k=(i,m)$, the environment deterministically updates:
+(i) task $i$'s $(\text{start}_i,c_i,\text{status}_i)$,
+(ii) VM $m$'s allocation timeline,
+(iii) descendants' readiness when all parents are completed:
+$\text{task status}_j\gets\text{ready}$ if $\forall p\in \mathrm{Pa}(j): \text{task status}_p=\text{done}$ and $\tau\ge \max_{p\in\mathrm{Pa}(j)} c_p$,
+(iv) simulation clock to the next decision epoch $\tau_{k+1}$.
+
+Compared to \cite{sensors-25-01428}, our formulation changes how makespan and active energy are computed. First, we allow several tasks to run at the same time on a single VM as long as the sum of their CPU core and memory demands does not exceed the VM capacity, which affects both the estimated completion times and the time at which a VM becomes free again. Second, in the energy model we use fractional CPU utilization: the instantaneous power of a VM depends on the aggregate CPU load of all tasks that are active on it, not only on a single running task. As a result, both the concurrency-aware makespan heuristic $\widehat{T}(s)$ and the active energy heuristic $\widehat{E}(s)$ used in our regret-based reward shaping differ from the ones in \cite{sensors-25-01428}, while the rest of the MDP structure remains the same.
+
+\paragraph{Reward $\mathcal{R}$ with Concurrency-Aware Heuristics.}
+\label{par:reward}
+To enable effective credit assignment, we define per-step rewards as regret reductions relative to integrated heuristic estimates that account for concurrent task execution on multi-core VMs.
+
+\subparagraph{Heuristic Estimates.}
+At each state $s$, we compute two greedy estimates:
+\begin{itemize}
+    \item \textbf{Makespan estimate} $\widehat{T}(s)$: Earliest completion time obtained by greedily scheduling remaining tasks using an earliest-completion-time (ECT) policy with full concurrency awareness.
+    \item \textbf{Active energy estimate} $\widehat{E}(s)$: Minimum active energy consumption for remaining tasks, accounting for fractional CPU utilization and concurrent execution.
+\end{itemize}
+
+Both heuristics simulate a feasible completion of the workflow by:
+\begin{enumerate}
+    \item Building per-VM event timelines from already-scheduled tasks, where each event $(t, \Delta_{\text{mem}}, \Delta_{\text{cores}})$ tracks resource changes at time $t$.
+    \item For each unscheduled task $i$, finding the earliest feasible start time on each compatible VM $m\in\mathcal{C}_i$ using the function $\text{EarliestFeasible}(m, t_{\text{ready}}^i, \text{mem}_i, \text{cpu}_i)$, which identifies the first time $t\ge t_{\text{ready}}^i$ when:
+    \[
+    \text{used\_mem}_m(t) + \text{mem}_i \le C^{\text{mem}}_m \quad\text{and}\quad \text{used\_cores}_m(t) + \text{cpu}_i \le C^{\text{cpu}}_m
+    \]
+    \item Selecting the VM that minimizes completion time (for makespan) or energy consumption (for energy).
+\end{enumerate}
+
+For the energy heuristic, power on VM $m$ at time $t$ is modeled as:
+\[
+P_m(t) = P^{\text{idle}}_m + (P^{\text{peak}}_m - P^{\text{idle}}_m) \cdot U_m(t),
+\quad
+U_m(t) = \min\!\left(1,\ \frac{1}{C^{\text{cpu}}_m}\sum_{j\in A_m(t)} \text{cpu}_j\right)
+\]
+where $A_m(t)$ is the set of tasks active on VM $m$ at time $t$, and $U_m(t)\in[0,1]$ is the fractional CPU utilization. Energy is integrated piecewise-constant over segments bounded by task start/completion events.
+
+\subparagraph{Regret-Based Reward.}
+At each decision epoch $k$, after action $a_k$ transitions $s_k\to s_{k+1}$, we compute normalized regret reductions:
+\[
+\Delta R^{\text{mk}}_k = -\frac{\widehat{T}(s_{k+1}) - \widehat{T}(s_k)}{\max(\widehat{T}(s_{k+1}), \varepsilon)},
+\qquad
+\Delta R^{\text{en}}_k = -\frac{\widehat{E}(s_{k+1}) - \widehat{E}(s_k)}{\max(\widehat{E}(s_{k+1}), \varepsilon)}
+\]
+where $\varepsilon>0$ is a small constant. A positive value indicates the action reduced the estimated cost-to-go. The combined reward is:
+\[
+r_k = w_T \cdot \Delta R^{\text{mk}}_k + w_E \cdot \Delta R^{\text{en}}_k
+\]
+where $(w_T, w_E)$ are tunable weights that scalarize the multi-objective problem.
+
+This reward formulation preserves credit assignment across scheduling decisions while accounting for the benefits of concurrent task execution. When an action schedules a task that can run concurrently with already-scheduled tasks (exploiting available VM cores and memory), both $\widehat{T}(s)$ and $\widehat{E}(s)$ typically decrease, yielding positive reward signals that guide the agent toward efficient resource utilization.
+
+\paragraph{Objective.}
+We optimize a stationary policy $\pi_\theta(a\mid s)$ to maximize expected return
+\[
+J(\pi_\theta) = \mathbb{E}_{\pi_\theta,\mathcal{P}}\!\left[\sum_{k=0}^{K} \gamma^k\, r_k\right],
+\]
+typically with $\gamma\approx 1$ for episodic scheduling. At episode termination, final makespan $T_{\mathrm{mk}}=\max_i c_i$ and total energy
+\[
+E_{\mathrm{tot}} = \sum_{m\in\mathcal{M}} \int_{0}^{T_{\mathrm{mk}}} P_m(t)\,dt
+\]
+are computed for evaluation.
+
+\paragraph{Constraints and Termination.}
+Feasibility is enforced by $\mathcal{F}(s_k)$:
+(i) precedence constraints via readiness,
+(ii) per-VM resource capacities (CPU cores and memory) over time with concurrent task support,
+(iii) task--VM compatibility.
+The episode terminates when all tasks are completed.

@@ -1,0 +1,102 @@
+[
+  {
+    "name": "TurboCore T7",
+    "cores": 172,
+    "cpu_speed_gips": 780.0,
+    "memory_gb": 192,
+    "disk_tb": 12,
+    "bandwidth_gbps": 2.5,
+    "power_idle_watt": 520,
+    "power_peak_watt": 1600
+  },
+  {
+    "name": "TurboCore T6",
+    "cores": 164,
+    "cpu_speed_gips": 730.0,
+    "memory_gb": 192,
+    "disk_tb": 12,
+    "bandwidth_gbps": 2.5,
+    "power_idle_watt": 500,
+    "power_peak_watt": 1500
+  },
+  {
+    "name": "TurboCore T5",
+    "cores": 156,
+    "cpu_speed_gips": 690.0,
+    "memory_gb": 176,
+    "disk_tb": 12,
+    "bandwidth_gbps": 2.0,
+    "power_idle_watt": 480,
+    "power_peak_watt": 1400
+  },
+  {
+    "name": "TurboCore T4",
+    "cores": 148,
+    "cpu_speed_gips": 650.0,
+    "memory_gb": 176,
+    "disk_tb": 10,
+    "bandwidth_gbps": 2.0,
+    "power_idle_watt": 460,
+    "power_peak_watt": 1300
+  },
+  {
+    "name": "TurboCore T3",
+    "cores": 140,
+    "cpu_speed_gips": 620.0,
+    "memory_gb": 160,
+    "disk_tb": 10,
+    "bandwidth_gbps": 2.0,
+    "power_idle_watt": 440,
+    "power_peak_watt": 1200
+  },
+  {
+    "name": "TurboCore T2",
+    "cores": 132,
+    "cpu_speed_gips": 590.0,
+    "memory_gb": 160,
+    "disk_tb": 10,
+    "bandwidth_gbps": 2.0,
+    "power_idle_watt": 420,
+    "power_peak_watt": 1100
+  },
+  {
+    "name": "TurboCore T1",
+    "cores": 124,
+    "cpu_speed_gips": 560.0,
+    "memory_gb": 160,
+    "disk_tb": 10,
+    "bandwidth_gbps": 1.5,
+    "power_idle_watt": 400,
+    "power_peak_watt": 1000
+  },
+  {
+    "name": "GreenEdge G3",
+    "cores": 112,
+    "cpu_speed_gips": 520.0,
+    "memory_gb": 144,
+    "disk_tb": 8,
+    "bandwidth_gbps": 1.5,
+    "power_idle_watt": 85,
+    "power_peak_watt": 220
+  },
+  {
+    "name": "GreenEdge G2",
+    "cores": 104,
+    "cpu_speed_gips": 510.0,
+    "memory_gb": 144,
+    "disk_tb": 8,
+    "bandwidth_gbps": 1.5,
+    "power_idle_watt": 80,
+    "power_peak_watt": 210
+  },
+  {
+    "name": "GreenEdge G1",
+    "cores": 100,
+    "cpu_speed_gips": 500.0,
+    "memory_gb": 128,
+    "disk_tb": 8,
+    "bandwidth_gbps": 1.5,
+    "power_idle_watt": 75,
+    "power_peak_watt": 200
+  }
+]

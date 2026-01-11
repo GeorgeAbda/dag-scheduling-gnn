@@ -1,0 +1,66 @@
+# Catastrophic Conflict Experiment
+# Prove that strong gradient conflict prevents learning
+experiment:
+  name: "catastrophic_conflict"
+  seed: 12345
+  output_dir: "logs"
+  device: "cpu"
+
+training:
+  total_timesteps: 100000  # Longer to see if agent can overcome conflict
+  learning_rate: 0.00025
+  num_envs: 4
+  num_steps: 128
+  gamma: 0.99
+  gae_lambda: 0.95
+  num_minibatches: 2
+  update_epochs: 4
+  clip_coef: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  anneal_lr: true
+
+evaluation:
+  test_every_iters: 10
+  robust_eval_alpha: 0.25
+
+domain:
+  longcp_config: "data/rl_configs/two_mdp_longcp_n10_p085_bottleneck.json"  # MDP1 in bottleneck regime
+  wide_config: null  # Will be selected adversarially
+  host_specs_file: "data/host_specs.json"
+
+seed_control:
+  mode: "controlled"
+
+variant:
+  name: "hetero"
+
+# CATASTROPHIC CONFLICT MODE
+adversarial:
+  enabled: true
+  catastrophic: true  # Search for cos < -0.8
+  num_candidates: 1000  # Large search space
+  rollout_steps: 256  # Longer rollouts for stable gradients
+  vary_structure: true
+  verify_every: 50  # Re-check conflict every 50 iterations
+  
+  # Bottleneck regimes (non-queue-free) - ALL candidates in bottleneck
+  include_bottlenecks: true
+  vm_host_ratio_min: 1.0  # Fixed at 1.0
+  vm_host_ratio_max: 1.0  # Fixed at 1.0
+  resource_pressure_min: 1.1  # Minimum bottleneck (no queue-free candidates)
+  resource_pressure_max: 2.0  # Heavy bottleneck
+
+# Multi-objective preferences
+morl:
+  alpha_makespan: 0.5
+  alpha_energy: 0.5
+
+trajectory:
+  enabled: false
+
+logging:
+  tensorboard: true
+  log_every: 5
+  grad_log_every: 5  # Track gradient conflict closely

@@ -1,0 +1,102 @@
+[
+  {
+    "name": "PowerEdge R740",
+    "cores": 156,
+    "cpu_speed_gips": 604.8,
+    "memory_gb": 164,
+    "disk_tb": 10,
+    "bandwidth_gbps": 1.5,
+    "power_idle_watt": 120,
+    "power_peak_watt": 1100
+  },
+  {
+    "name": "PowerEdge C6100",
+    "cores": 148,
+    "cpu_speed_gips": 120.96,
+    "memory_gb": 64,
+    "disk_tb": 10,
+    "bandwidth_gbps": 1.5,
+    "power_idle_watt": 60,
+    "power_peak_watt": 200
+  },
+  {
+    "name": "PowerEdge R820",
+    "cores": 132,
+    "cpu_speed_gips": 120.96,
+    "memory_gb": 128,
+    "disk_tb": 10,
+    "bandwidth_gbps": 1,
+    "power_idle_watt": 60,
+    "power_peak_watt": 200
+  },
+  {
+    "name": "iDataPlex dx360",
+    "cores": 116,
+    "cpu_speed_gips": 120.96,
+    "memory_gb": 48,
+    "disk_tb": 10,
+    "bandwidth_gbps": 1,
+    "power_idle_watt": 60,
+    "power_peak_watt": 200
+  },
+  {
+    "name": "PowerEdge R710",
+    "cores": 112,
+    "cpu_speed_gips": 120.96,
+    "memory_gb": 64,
+    "disk_tb": 10,
+    "bandwidth_gbps": 1,
+    "power_idle_watt": 60,
+    "power_peak_watt": 200
+  },
+  {
+    "name": "ProLiant DL380 Gen10",
+    "cores": 140,
+    "cpu_speed_gips": 120.96,
+    "memory_gb": 128,
+    "disk_tb": 12,
+    "bandwidth_gbps": 2,
+    "power_idle_watt": 60,
+    "power_peak_watt": 200
+  },
+  {
+    "name": "ThinkSystem SR650",
+    "cores": 124,
+    "cpu_speed_gips": 120.96,
+    "memory_gb": 64,
+    "disk_tb": 8,
+    "bandwidth_gbps": 1,
+    "power_idle_watt": 60,
+    "power_peak_watt": 200
+  },
+  {
+    "name": "PowerEdge R930",
+    "cores": 172,
+    "cpu_speed_gips": 120.96,
+    "memory_gb": 128,
+    "disk_tb": 16,
+    "bandwidth_gbps": 2,
+    "power_idle_watt": 60,
+    "power_peak_watt": 200
+  },
+  {
+    "name": "Sun Fire X4170 M3",
+    "cores": 116,
+    "cpu_speed_gips": 120.96,
+    "memory_gb": 64,
+    "disk_tb": 8,
+    "bandwidth_gbps": 1,
+    "power_idle_watt": 60,
+    "power_peak_watt": 200
+  },
+  {
+    "name": "Supermicro 2029P",
+    "cores": 148,
+    "cpu_speed_gips": 120.96,
+    "memory_gb": 128,
+    "disk_tb": 12,
+    "bandwidth_gbps": 1.5,
+    "power_idle_watt": 60,
+    "power_peak_watt": 200
+  }
+]

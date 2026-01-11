@@ -1,0 +1,251 @@
+\section{Gradient-Based Domain Variant Clustering in Multi-Objective RL}
+\label{sec:gradient_clustering}
+
+\subsection{Problem Setting}
+
+Consider an agent trained on a single environment but facing multiple \textit{domain variants} that alter the trade-off structure between objectives. Each variant $V_k$ modifies the reward function:
+\begin{equation}
+    R_k(s, a) = \begin{pmatrix} \beta_k^{(1)} \cdot r_1(s,a) \\ \beta_k^{(2)} \cdot r_2(s,a) \end{pmatrix}
+\end{equation}
+where $\beta_k^{(i)}$ are scaling factors that change the relative importance of each objective.
+
+In multi-objective reinforcement learning (MORL), the agent optimizes a scalarized objective:
+\begin{equation}
+    J_\alpha(\theta) = \alpha \cdot J_1(\theta) + (1-\alpha) \cdot J_2(\theta)
+\end{equation}
+where $\alpha \in [0,1]$ is the preference weight and $J_i(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}[\sum_t \gamma^t r_i(s_t, a_t)]$ is the expected return for objective $i$.
+
+\textbf{Key observation:} Even with the same preference $\alpha$, different domain variants produce different gradient directions because their reward scalings lead to different optimal trade-offs on the Pareto front.
+
+\textbf{Real-world motivation:} This models scenarios where:
+\begin{itemize}
+    \item A robot operates in environments with different energy costs
+    \item A trading agent faces markets with varying risk/reward ratios
+    \item An autonomous vehicle navigates roads with different speed/safety trade-offs
+\end{itemize}
+
+\subsection{Experimental Setup}
+
+\subsubsection{MO-Gymnasium Environments}
+
+We use the MO-Gymnasium benchmark, which provides multi-objective versions of standard RL environments. Our experiments focus on three environments with two objectives each:
+
+\begin{table}[h]
+\centering
+\caption{Multi-objective environments used in experiments.}
+\label{tab:environments}
+\begin{tabular}{lccl}
+\toprule
+\textbf{Environment} & \textbf{Obs. Dim} & \textbf{Actions} & \textbf{Objectives} \\
+\midrule
+Deep Sea Treasure & 2 & 4 & Treasure value, Time penalty \\
+Four Room & 14 & 4 & Goal 1 reward, Goal 2 reward \\
+Minecart & 7 & 6 & Ore collected, Fuel consumed \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Intra-Domain Variant Setup}
+
+For each environment, we train \textbf{one agent} and expose it to \textbf{five domain variants} with different reward scalings:
+
+\begin{table}[h]
+\centering
+\caption{Domain variants with different trade-off structures.}
+\label{tab:variants}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Variant} & $\beta^{(1)}$ & $\beta^{(2)}$ & \textbf{Trade-off Cluster} \\
+\midrule
+Balanced & 1.0 & 1.0 & Balanced \\
+Obj1-Strong & 3.0 & 0.5 & Obj1-focused \\
+Obj1-Extreme & 5.0 & 0.2 & Obj1-focused \\
+Obj2-Strong & 0.5 & 3.0 & Obj2-focused \\
+Obj2-Extreme & 0.2 & 5.0 & Obj2-focused \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This creates three natural clusters:
+\begin{enumerate}
+    \item \textbf{Balanced}: Equal weight to both objectives
+    \item \textbf{Obj1-focused}: Variants that favor the first objective
+    \item \textbf{Obj2-focused}: Variants that favor the second objective
+\end{enumerate}
+
+The goal is to discover these clusters using only gradient information, without knowing the true variant labels.
+
+\subsubsection{Gradient Collection}
+
+For each domain instance, we collect policy gradients as follows:
+
+\begin{enumerate}
+    \item Initialize a shared policy $\pi_\theta$ (MLP with 2 hidden layers of 64 units)
+    \item For each trajectory $\tau$ sampled from the domain:
+    \begin{enumerate}
+        \item Compute the scalarized return: $G_\alpha(\tau) = \alpha \sum_t r_1(s_t, a_t) + (1-\alpha) \sum_t r_2(s_t, a_t)$
+        \item Compute the policy gradient: $g(\tau) = \nabla_\theta \log \pi_\theta(\tau) \cdot G_\alpha(\tau)$
+    \end{enumerate}
+    \item Collect $N$ gradient samples per domain to form the gradient distribution $\mu_k = \{g(\tau_1), \ldots, g(\tau_N)\}$
+\end{enumerate}
+
+\subsection{Sliced Wasserstein Distance for Gradient Comparison}
+
+\subsubsection{Why Distributional Comparison?}
+
+A naive approach would compare domains using the mean gradient:
+\begin{equation}
+    d_{\text{cosine}}(M_i, M_j) = 1 - \frac{\bar{g}_i \cdot \bar{g}_j}{\|\bar{g}_i\| \|\bar{g}_j\|}
+\end{equation}
+where $\bar{g}_k = \frac{1}{N}\sum_{n=1}^N g_k^{(n)}$ is the mean gradient for domain $k$.
+
+However, we observe high intra-domain gradient variance due to:
+\begin{itemize}
+    \item Different trajectories reaching different Pareto-optimal solutions
+    \item Stochastic policy exploration
+    \item Sparse reward structures
+\end{itemize}
+
+Our experiments show that within a single domain, up to 49\% of trajectory gradient pairs have negative cosine similarity (i.e., they conflict). This makes mean-based comparison unreliable.
+
+\subsubsection{Sliced Wasserstein Distance}
+
+We propose using the Sliced Wasserstein (SW) distance to compare gradient distributions. For two distributions $\mu$ and $\nu$ over $\mathbb{R}^d$, the SW distance is:
+\begin{equation}
+    SW_p(\mu, \nu) = \left( \int_{\mathbb{S}^{d-1}} W_p^p(\theta_\#\mu, \theta_\#\nu) \, d\sigma(\theta) \right)^{1/p}
+\end{equation}
+where $\theta_\#\mu$ denotes the 1D projection of $\mu$ onto direction $\theta$, and $W_p$ is the 1D Wasserstein distance.
+
+In practice, we approximate this with $L$ random projections:
+\begin{equation}
+    \widehat{SW}_p(\mu, \nu) = \left( \frac{1}{L} \sum_{\ell=1}^L W_p^p(\theta_\ell^\top X, \theta_\ell^\top Y) \right)^{1/p}
+\end{equation}
+where $X, Y$ are the gradient samples and $\theta_\ell \sim \text{Uniform}(\mathbb{S}^{d-1})$.
+
+\subsubsection{Algorithm}
+
+\begin{algorithm}[h]
+\caption{Gradient-Based Domain Clustering}
+\label{alg:gradient_clustering}
+\begin{algorithmic}[1]
+\REQUIRE Domain instances $\{D_1, \ldots, D_M\}$, shared policy $\pi_\theta$, preference $\alpha$
+\ENSURE Cluster assignments $\{c_1, \ldots, c_M\}$
+
+\STATE \textbf{// Step 1: Collect gradient distributions}
+\FOR{each domain $D_m$}
+    \STATE $\mu_m \leftarrow \emptyset$
+    \FOR{$n = 1$ to $N$}
+        \STATE Sample trajectory $\tau \sim \pi_\theta$ in $D_m$
+        \STATE Compute gradient $g(\tau) = \nabla_\theta J_\alpha(\theta; \tau)$
+        \STATE $\mu_m \leftarrow \mu_m \cup \{g(\tau)\}$
+    \ENDFOR
+\ENDFOR
+
+\STATE \textbf{// Step 2: Compute pairwise distances}
+\FOR{$i = 1$ to $M$}
+    \FOR{$j = i+1$ to $M$}
+        \STATE $D_{ij} \leftarrow SW_2(\mu_i, \mu_j)$ \COMMENT{Sliced Wasserstein distance}
+        \STATE $D_{ji} \leftarrow D_{ij}$
+    \ENDFOR
+\ENDFOR
+
+\STATE \textbf{// Step 3: Spectral clustering}
+\STATE Convert to similarity: $S_{ij} = 1 - D_{ij} / \max(D)$
+\STATE Apply spectral clustering on $S$ to obtain $\{c_1, \ldots, c_M\}$
+
+\RETURN $\{c_1, \ldots, c_M\}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Comparison with Other Distance Metrics}
+
+We compare Sliced Wasserstein against five alternative distance metrics:
+
+\begin{table}[h]
+\centering
+\caption{Comparison of distance metrics for gradient-based domain clustering.}
+\label{tab:distance_comparison}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Metric} & \textbf{Type} & \textbf{ARI} & \textbf{NMI} & \textbf{Purity} & \textbf{Sep. Ratio} \\
+\midrule
+Sliced Wasserstein & Distributional & \textbf{0.872} & \textbf{0.883} & \textbf{95.8\%} & 2.10 \\
+Energy Distance & Distributional & \textbf{0.872} & \textbf{0.883} & \textbf{95.8\%} & \textbf{5.30} \\
+MMD (RBF kernel) & Distributional & 0.419 & 0.578 & 75.0\% & 1.57 \\
+Cosine (Mean) & Point-based & 0.057 & 0.163 & 54.2\% & 1.00 \\
+Frechet & Point-based & 0.033 & 0.201 & 45.8\% & 1.67 \\
+Euclidean (Mean) & Point-based & 0.008 & 0.138 & 41.7\% & 1.12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key findings:}
+\begin{itemize}
+    \item \textbf{Distributional methods outperform point-based methods} by a large margin (95.8\% vs 54.2\% purity)
+    \item \textbf{Mean-based methods fail} because high gradient variance makes the mean unreliable
+    \item \textbf{Sliced Wasserstein and Energy Distance} achieve identical clustering performance
+    \item \textbf{Energy Distance} provides better separation (5.30 vs 2.10 cross/within ratio)
+\end{itemize}
+
+\subsection{Intra-Domain Gradient Conflict}
+
+A key phenomenon we observe is \textit{intra-domain gradient conflict}: within the same environment, different trajectories produce conflicting gradients even with the same preference weight $\alpha$.
+
+\begin{definition}[Gradient Conflict]
+Two gradients $g_i$ and $g_j$ are in conflict if their cosine similarity is negative:
+\begin{equation}
+    \text{conflict}(g_i, g_j) = \mathbb{1}\left[\frac{g_i \cdot g_j}{\|g_i\| \|g_j\|} < 0\right]
+\end{equation}
+\end{definition}
+
+\begin{table}[h]
+\centering
+\caption{Intra-domain gradient conflict rates ($\alpha = 0.5$, 100 trajectories per environment).}
+\label{tab:conflict_rates}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Environment} & \textbf{Conflict Rate} & \textbf{Mean Cosine} \\
+\midrule
+Deep Sea Treasure & 49.0\% & $0.071 \pm 0.447$ \\
+Four Room & 45.4\% & $0.005 \pm 0.439$ \\
+Minecart & 1.4\% & $0.003 \pm 0.062$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The high conflict rates in Deep Sea Treasure and Four Room (near 50\%, equivalent to random) explain why mean-based methods fail: the mean gradient averages out conflicting directions, losing the distributional structure that distinguishes domains.
+
+\subsection{Results}
+
+\subsubsection{Domain Clustering Performance}
+
+Using Sliced Wasserstein distance with spectral clustering, we achieve:
+
+\begin{itemize}
+    \item \textbf{Purity: 86.7\%} on 30 domain instances (10 per type)
+    \item \textbf{ARI: 0.667}, \textbf{NMI: 0.765}
+    \item Clear block-diagonal structure in the distance matrix
+\end{itemize}
+
+\subsubsection{Gradient Space Visualization}
+
+PCA projection of mean gradients shows clear separation between domain types:
+\begin{itemize}
+    \item \textbf{Balanced} domains cluster in one region
+    \item \textbf{Treasure-heavy} domains form a distinct cluster
+    \item \textbf{Time-heavy} domains are most separated
+\end{itemize}
+
+\subsection{Discussion}
+
+Our results demonstrate that:
+
+\begin{enumerate}
+    \item \textbf{Gradient distributions encode domain structure:} Different Pareto trade-offs produce characteristic gradient signatures
+    
+    \item \textbf{Optimal Transport is essential:} Distributional comparison via Sliced Wasserstein captures the full gradient structure, unlike mean-based methods
+    
+    \item \textbf{Unsupervised domain discovery is possible:} We can cluster MDPs by their trade-off structure without knowing the true domain labels
+    
+    \item \textbf{Practical implications:} In domain randomization, gradient-based clustering can identify which environments have compatible trade-offs, enabling more efficient multi-task learning
+\end{enumerate}
