@@ -39,8 +39,8 @@ _proj_root = Path(__file__).resolve().parents[1]
 if str(_proj_root) not in sys.path:
     sys.path.insert(0, str(_proj_root))
 
-from scheduler.viz_results.compare_embeddings_panel import load_agent, build_args_gnp
-from scheduler.rl_model.ablation_gnn import _test_agent, AblationGinAgent
+from cogito.viz_results.compare_embeddings_panel import load_agent, build_args_gnp
+from cogito.gnn_deeprl_model.ablation_gnn import _test_agent, AblationGinAgent
 
 
 def load_lambda_models(lambda_paths_str: str, device: str, architecture: str = "hetero") -> Dict[float, AblationGinAgent]:

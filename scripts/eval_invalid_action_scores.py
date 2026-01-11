@@ -8,13 +8,13 @@ from typing import Tuple, Optional, Dict
 import numpy as np
 import torch
 
-from scheduler.rl_model.ablation_gnn import (
+from cogito.gnn_deeprl_model.ablation_gnn import (
     AblationGinAgent,
     AblationVariant,
     Args as AblArgs,
     _make_test_env as make_test_env,
 )
-from scheduler.dataset_generator.gen_dataset import DatasetArgs
+from cogito.dataset_generator.gen_dataset import DatasetArgs
 
 
 def _pick_ckpt_from_dir(dir_path: Path, prefix: str = "hetero_mean_pf_it", fallback_prefix: str = "hetero_worst_pf_it") -> Optional[Path]:

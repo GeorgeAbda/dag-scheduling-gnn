@@ -27,6 +27,14 @@ scheduler/**/*.pdf
 scheduler/**/*.backup
 !scheduler/README.md
 
+# Private cogito library (all Python code protected)
+cogito/**/*.py
+cogito/**/*.pyc
+!cogito/__init__.py
+cogito/**/*.pdf
+cogito/**/*.backup
+cogito/**/.DS_Store
+
 # Virtual environments
 venv/
 env/

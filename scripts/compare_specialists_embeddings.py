@@ -33,10 +33,10 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__fi
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from scheduler.dataset_generator.gen_dataset import DatasetArgs
-from scheduler.rl_model.core.env.gym_env import CloudSchedulingGymEnvironment
-from scheduler.rl_model.ablation_gnn import AblationGinAgent, AblationVariant
-from scheduler.rl_model.agents.gin_agent.wrapper import GinAgentWrapper
+from cogito.dataset_generator.gen_dataset import DatasetArgs
+from cogito.gnn_deeprl_model.core.env.gym_env import CloudSchedulingGymEnvironment
+from cogito.gnn_deeprl_model.ablation_gnn import AblationGinAgent, AblationVariant
+from cogito.gnn_deeprl_model.agents.gin_agent.wrapper import GinAgentWrapper
 
 
 @dataclass
@@ -47,7 +47,7 @@ class CfgPaths:
 
 def _compute_optimal_req_divisor(dataset_cfg: dict, seed: int) -> int:
     # Conservative reuse of logic from eval script: scale per-task demand by job size
-    from scheduler.dataset_generator.core.gen_vm import generate_hosts, generate_vms, allocate_vms
+    from cogito.dataset_generator.core.gen_vm import generate_hosts, generate_vms, allocate_vms
     rng = np.random.RandomState(int(seed))
     host_count = int(dataset_cfg.get("host_count", 10))
     vm_count = int(dataset_cfg.get("vm_count", 10))

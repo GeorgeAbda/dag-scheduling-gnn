@@ -18,7 +18,7 @@ except Exception:
 
 # Metrics helpers to match pareto_compare_models.py logic
 try:
-    from scheduler.rl_model.robustness.metrics import (
+    from cogito.gnn_deeprl_model.robustness.metrics import (
         pareto_non_dominated,
         ideal_nadir,
         normalize_points,

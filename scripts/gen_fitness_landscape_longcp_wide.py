@@ -33,9 +33,9 @@ ROOT = THIS_FILE.parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scheduler.dataset_generator.gen_dataset import DatasetArgs
-from scheduler.dataset_generator.core.gen_vm import generate_hosts, generate_vms, allocate_vms
-from scheduler.viz_results.decision_boundaries.solution_landscape import (
+from cogito.dataset_generator.gen_dataset import DatasetArgs
+from cogito.dataset_generator.core.gen_vm import generate_hosts, generate_vms, allocate_vms
+from cogito.viz_results.decision_boundaries.solution_landscape import (
     EnumArgs,
     build_env,
     enumerate_spacefill_once,

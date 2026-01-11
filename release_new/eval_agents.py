@@ -3,5 +3,5 @@ import sys, os
 # Add project root to path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
-from scheduler.tools.eval_agents import main
+from cogito.tools.eval_agents import main
 if __name__ == "__main__": main()

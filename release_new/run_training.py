@@ -24,7 +24,7 @@ def set_host_specs_from_config(cfg):
         os.environ['HOST_SPECS_PATH'] = os.path.abspath(host_specs)
 
 def config_to_args(cfg):
-    from scheduler.rl_model.ablation_gnn_traj_main import Args
+    from cogito.gnn_deeprl_model.ablation_gnn_traj_main import Args
     a = Args()
     e = cfg.get('experiment', {})
     a.exp_name = e.get('name', a.exp_name)
@@ -58,12 +58,17 @@ def config_to_args(cfg):
     v = cfg.get('variant', {})
     a.train_only_variant = v.get('name', a.train_only_variant)
     tr = cfg.get('trajectory', {})
-    a.trajectory_enabled = tr.get('enabled', a.trajectory_enabled)
-    a.trajectory_collect_every = tr.get('collect_every', a.trajectory_collect_every)
-    a.trajectory_method = tr.get('method', a.trajectory_method)
+    if hasattr(a, 'trajectory_enabled'):
+        a.trajectory_enabled = tr.get('enabled', a.trajectory_enabled)
+    if hasattr(a, 'trajectory_collect_every'):
+        a.trajectory_collect_every = tr.get('collect_every', a.trajectory_collect_every)
+    if hasattr(a, 'trajectory_method'):
+        a.trajectory_method = tr.get('method', a.trajectory_method)
     l = cfg.get('logging', {})
-    a.no_tensorboard = not l.get('tensorboard', True)
-    a.log_every = l.get('log_every', a.log_every)
+    if hasattr(a, 'no_tensorboard'):
+        a.no_tensorboard = not l.get('tensorboard', True)
+    if hasattr(a, 'log_every'):
+        a.log_every = l.get('log_every', a.log_every)
     return a
 
 def main():
@@ -88,14 +93,14 @@ def main():
             ov, _ = op.parse_known_args(rest)
             for k,v in vars(ov).items():
                 if v is not None: setattr(args, k, v)
-        from scheduler.rl_model.ablation_gnn_traj_main import main as train
+        from cogito.gnn_deeprl_model.ablation_gnn_traj_main import main as train
         train(args)
     elif known.help:
         print(__doc__)
         print("\nConfigs:", *[f"  - {c}" for c in sorted(__import__('glob').glob("configs/*.yaml"))], sep='\n')
     else:
         import tyro
-        from scheduler.rl_model.ablation_gnn_traj_main import main as train, Args
+        from cogito.gnn_deeprl_model.ablation_gnn_traj_main import main as train, Args
         train(tyro.cli(Args))
 
 if __name__ == "__main__": main()

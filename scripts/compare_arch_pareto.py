@@ -19,10 +19,10 @@ if str(_ROOT) not in _sys.path:
     _sys.path.insert(0, str(_ROOT))
 
 # Internal imports from the repo
-from scheduler.rl_model.ablation_gnn_traj_main import Args as TrainArgs
-from scheduler.rl_model.ablation_gnn import AblationGinAgent, AblationVariant
-from scheduler.rl_model.core.env.gym_env import CloudSchedulingGymEnvironment
-from scheduler.rl_model.agents.gin_agent.wrapper import GinAgentWrapper
+from cogito.gnn_deeprl_model.ablation_gnn_traj_main import Args as TrainArgs
+from cogito.gnn_deeprl_model.ablation_gnn import AblationGinAgent, AblationVariant
+from cogito.gnn_deeprl_model.core.env.gym_env import CloudSchedulingGymEnvironment
+from cogito.gnn_deeprl_model.agents.gin_agent.wrapper import GinAgentWrapper
 
 
 # -----------------------------

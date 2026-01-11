@@ -31,10 +31,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scheduler.dataset_generator.core.gen_dataset import generate_dataset
-from scheduler.rl_model.core.env.gym_env import CloudSchedulingGymEnvironment
-from scheduler.rl_model.agents.gin_agent.wrapper import GinAgentWrapper
-from scheduler.rl_model.agents.gin_agent.agent import GinAgent
+from cogito.dataset_generator.core.gen_dataset import generate_dataset
+from cogito.gnn_deeprl_model.core.env.gym_env import CloudSchedulingGymEnvironment
+from cogito.gnn_deeprl_model.agents.gin_agent.wrapper import GinAgentWrapper
+from cogito.gnn_deeprl_model.agents.gin_agent.agent import GinAgent
 
 
 @dataclass

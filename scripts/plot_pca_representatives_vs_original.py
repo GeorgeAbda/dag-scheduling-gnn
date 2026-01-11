@@ -13,8 +13,8 @@ import tyro
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from scheduler.dataset_generator.core.models import Dataset, Workflow
-from scheduler.rl_model.representative_eval import _gen_ds_for_seed, _extract_features
+from cogito.dataset_generator.core.models import Dataset, Workflow
+from cogito.gnn_deeprl_model.representative_eval import _gen_ds_for_seed, _extract_features
 
 
 from dataclasses import dataclass

@@ -16,9 +16,9 @@ _proj_root = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__
 if _proj_root not in _sys.path:
     _sys.path.insert(0, _proj_root)
 
-from scheduler.dataset_generator.core.gen_dataset import generate_dataset
-from scheduler.rl_model.core.env.gym_env import CloudSchedulingGymEnvironment
-from scheduler.rl_model.agents.gin_agent.wrapper import GinAgentWrapper
+from cogito.dataset_generator.core.gen_dataset import generate_dataset
+from cogito.gnn_deeprl_model.core.env.gym_env import CloudSchedulingGymEnvironment
+from cogito.gnn_deeprl_model.agents.gin_agent.wrapper import GinAgentWrapper
 
 
 def _load_train_features(domain_dir: Path) -> pd.DataFrame | None:

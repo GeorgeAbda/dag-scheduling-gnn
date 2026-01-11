@@ -8,14 +8,14 @@ import numpy as np
 import torch
 import csv
 
-# Ensure project root import path (so we can import scheduler.* when run as a script)
+# Ensure project root import path (so we can import cogito.* when run as a script)
 import sys as _sys
 from pathlib import Path as _Path
 _ROOT = _Path(__file__).resolve().parents[1]
 if str(_ROOT) not in _sys.path:
     _sys.path.insert(0, str(_ROOT))
 
-from scheduler.rl_model.robustness.metrics import (
+from cogito.gnn_deeprl_model.robustness.metrics import (
     pareto_non_dominated,
     hypervolume_2d,
     ideal_nadir,

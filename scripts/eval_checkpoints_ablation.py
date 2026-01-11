@@ -68,7 +68,7 @@ _grandparent_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(
 if _grandparent_dir not in _sys.path:
     _sys.path.insert(0, _grandparent_dir)
 
-from scheduler.rl_model.ablation_gnn import (
+from cogito.gnn_deeprl_model.ablation_gnn import (
     AblationGinAgent,
     AblationVariant,
     Args,

@@ -27,7 +27,7 @@ _proj_root = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__
 if _proj_root not in _sys.path:
     _sys.path.insert(0, _proj_root)
 
-from scheduler.dataset_generator.core.gen_dataset import generate_dataset
+from cogito.dataset_generator.core.gen_dataset import generate_dataset
 
 
 def _load_rl_config(path: Path) -> tuple[list[int], dict]:

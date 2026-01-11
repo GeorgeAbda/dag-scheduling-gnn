@@ -13,8 +13,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__fi
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from scheduler.dataset_generator.core import gen_vm
-from scheduler.viz_results.decision_boundaries import score_correlation_agents as corr
+from cogito.dataset_generator.core import gen_vm
+from cogito.viz_results.decision_boundaries import score_correlation_agents as corr
 
 
 def _load_train_cfg(cfg_path: Path) -> tuple[Dict, List[int]]:

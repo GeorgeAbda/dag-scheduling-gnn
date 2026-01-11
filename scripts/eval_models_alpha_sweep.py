@@ -45,14 +45,14 @@ _proj_root = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__
 if _proj_root not in _sys.path:
     _sys.path.insert(0, _proj_root)
 
-from scheduler.rl_model.ablation_gnn import (
+from cogito.gnn_deeprl_model.ablation_gnn import (
     AblationGinAgent,
     AblationVariant,
     Args as AblArgs,
     _make_test_env,
 )
-from scheduler.dataset_generator.gen_dataset import DatasetArgs
-from scheduler.rl_model.core.utils.helpers import is_suitable
+from cogito.dataset_generator.gen_dataset import DatasetArgs
+from cogito.gnn_deeprl_model.core.utils.helpers import is_suitable
 
 
 def pick_variant(name: str) -> AblationVariant:

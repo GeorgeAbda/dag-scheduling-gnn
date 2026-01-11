@@ -14,7 +14,7 @@ _ROOT = _Path(__file__).resolve().parents[1]
 if str(_ROOT) not in _sys.path:
     _sys.path.insert(0, str(_ROOT))
 
-from scheduler.rl_model.robustness.metrics import (
+from cogito.gnn_deeprl_model.robustness.metrics import (
     pareto_non_dominated,
     hypervolume_2d,
     ideal_nadir,

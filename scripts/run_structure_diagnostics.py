@@ -9,7 +9,7 @@ _PROJECT_ROOT = os.path.abspath(os.path.join(_THIS_DIR, '..'))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from scheduler.rl_model.ablation_gnn import (
+from cogito.gnn_deeprl_model.ablation_gnn import (
     AblationGinAgent,
     AblationVariant,
     Args,

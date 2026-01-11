@@ -37,10 +37,10 @@ import numpy as np
 import pandas as pd
 import torch
 
-from scheduler.dataset_generator.gen_dataset import DatasetArgs
-from scheduler.rl_model.core.env.gym_env import CloudSchedulingGymEnvironment
-from scheduler.rl_model.agents.gin_agent.wrapper import GinAgentWrapper
-from scheduler.rl_model.ablation_gnn import AblationGinAgent, AblationVariant  # reuse model class
+from cogito.dataset_generator.gen_dataset import DatasetArgs
+from cogito.gnn_deeprl_model.core.env.gym_env import CloudSchedulingGymEnvironment
+from cogito.gnn_deeprl_model.agents.gin_agent.wrapper import GinAgentWrapper
+from cogito.gnn_deeprl_model.ablation_gnn import AblationGinAgent, AblationVariant  # reuse model class
 
 
 def build_env(args) -> GinAgentWrapper:

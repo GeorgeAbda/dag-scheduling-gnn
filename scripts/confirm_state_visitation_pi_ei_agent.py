@@ -18,12 +18,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scheduler.dataset_generator.core.gen_dataset import generate_dataset
-from scheduler.rl_model.core.env.gym_env import CloudSchedulingGymEnvironment
-from scheduler.rl_model.agents.gin_agent.wrapper import GinAgentWrapper
-from scheduler.rl_model.agents.gin_agent.agent import GinAgent
-import scheduler.config.settings as _cfg
-import scheduler.dataset_generator.core.gen_vm as _gen_vm
+from cogito.dataset_generator.core.gen_dataset import generate_dataset
+from cogito.gnn_deeprl_model.core.env.gym_env import CloudSchedulingGymEnvironment
+from cogito.gnn_deeprl_model.agents.gin_agent.wrapper import GinAgentWrapper
+from cogito.gnn_deeprl_model.agents.gin_agent.agent import GinAgent
+import cogito.config.settings as _cfg
+import cogito.dataset_generator.core.gen_vm as _gen_vm
 
 
 LONG_CP_CFG = "data/rl_configs/train_long_cp_p08_seeds.json"
@@ -190,7 +190,7 @@ def _load_agent(model_path: str | None, init_seed: int | None = None, jitter_std
 
     def _try_load_ablation(sd_raw: dict, path_hint: str) -> tuple[bool, GinAgent | None]:
         try:
-            from scheduler.rl_model import ablation_gnn as AG
+            from cogito.gnn_deeprl_model import ablation_gnn as AG
             # Heuristic variant detection from path and keys
             vname = "baseline"
             for cand in ["hetero", "gatv2", "sage", "pna", "transformer", "nnconv", "edgeconv"]:

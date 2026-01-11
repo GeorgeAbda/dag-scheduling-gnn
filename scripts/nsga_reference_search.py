@@ -17,9 +17,9 @@ if str(_ROOT) not in _sys.path:
     _sys.path.insert(0, str(_ROOT))
 
 # Internal imports
-from scheduler.rl_model.ablation_gnn import Args as TrainArgs, AblationVariant, AblationGinAgent
-from scheduler.rl_model.core.env.gym_env import CloudSchedulingGymEnvironment
-from scheduler.rl_model.agents.gin_agent.wrapper import GinAgentWrapper
+from cogito.gnn_deeprl_model.ablation_gnn import Args as TrainArgs, AblationVariant, AblationGinAgent
+from cogito.gnn_deeprl_model.core.env.gym_env import CloudSchedulingGymEnvironment
+from cogito.gnn_deeprl_model.agents.gin_agent.wrapper import GinAgentWrapper
 from tqdm import tqdm, trange
 
 
