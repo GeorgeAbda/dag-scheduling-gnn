@@ -23,8 +23,9 @@ wheels/
 # Private scheduler library (copyrighted)
 scheduler/**/*.py
 scheduler/**/*.pyc
+scheduler/**/*.pdf
+scheduler/**/*.backup
 !scheduler/README.md
-!scheduler/__init__.py
 
 # Virtual environments
 venv/
