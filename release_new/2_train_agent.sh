@@ -71,16 +71,17 @@ if hasattr(a, 'robust_eval_alpha'): a.robust_eval_alpha = ev.get('robust_eval_al
 
 # Domain
 d = cfg.get('domain', {})
-if hasattr(a, 'longcp_config'): a.longcp_config = d.get('longcp_config', a.longcp_config)
-if hasattr(a, 'wide_config'): a.wide_config = d.get('wide_config', a.wide_config)
+if hasattr(a, 'longcp_config'): a.longcp_config = d.get('longcp_config')
+if hasattr(a, 'wide_config'): a.wide_config = d.get('wide_config')
 
 # Seed control
 sc = cfg.get('seed_control', {})
-if hasattr(a, 'train_seeds_file'): a.train_seeds_file = sc.get('seeds_file', a.train_seeds_file)
+if hasattr(a, 'training_seed_mode'): a.training_seed_mode = sc.get('mode', a.training_seed_mode)
+if hasattr(a, 'train_seeds_file'): a.train_seeds_file = sc.get('seeds_file')
 
 # Variant
 v = cfg.get('variant', {})
-if hasattr(a, 'variant'): a.variant = v.get('name', a.variant)
+if hasattr(a, 'train_only_variant'): a.train_only_variant = v.get('name', a.train_only_variant)
 
 # Trajectory
 traj = cfg.get('trajectory', {})
@@ -90,7 +91,7 @@ if hasattr(a, 'trajectory_method'): a.trajectory_method = traj.get('method', a.t
 
 # Logging
 log = cfg.get('logging', {})
-if hasattr(a, 'tensorboard'): a.tensorboard = log.get('tensorboard', a.tensorboard)
+if hasattr(a, 'no_tensorboard'): a.no_tensorboard = not log.get('tensorboard', True)
 if hasattr(a, 'log_every'): a.log_every = log.get('log_every', a.log_every)
 
 # Run training
