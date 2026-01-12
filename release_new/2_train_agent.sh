@@ -21,12 +21,12 @@ echo "Using configuration: $CONFIG"
 echo ""
 
 # Train specialist (use delegator if present, otherwise fallback to private module)
-# Suppress verbose req_divisor messages
+# Suppress verbose req_divisor messages but keep progress bars (use sed with unbuffered mode)
 if [[ -f "run_training.py" ]]; then
-  python run_training.py --config "$CONFIG" 2>&1 | grep -v "req_divisor=" | grep -v "max_req_memory_mb=" | grep -v "max_req_cpu_cores="
+  python run_training.py --config "$CONFIG" 2>&1 | sed -u '/req_divisor=/d; /max_req_memory_mb=/d; /max_req_cpu_cores=/d; /max_cores=/d; /max_memory=/d'
 else
   PY_CMD='from cogito.gnn_deeprl_model.ablation_gnn_traj_main import main, Args; import tyro; main(tyro.cli(Args))'
-  python -c "$PY_CMD" --config "$CONFIG" 2>&1 | grep -v "req_divisor=" | grep -v "max_req_memory_mb=" | grep -v "max_req_cpu_cores="
+  python -c "$PY_CMD" --config "$CONFIG" 2>&1 | sed -u '/req_divisor=/d; /max_req_memory_mb=/d; /max_req_cpu_cores=/d; /max_cores=/d; /max_memory=/d'
 fi
 
 echo ""
