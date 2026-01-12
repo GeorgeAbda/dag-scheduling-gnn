@@ -41,6 +41,12 @@ cogito/**/.DS_Store
 cogito/gnn_deeprl_model/adversarial/
 cogito/gnn_deeprl_model/robustness/
 
+# Exclude additional private directories
+cogito/experiments/
+cogito/viz_results/
+cogito/dataset_generator/solvers/
+cogito/dataset_generator/visualizers/
+
 # Virtual environments
 venv/
 env/
