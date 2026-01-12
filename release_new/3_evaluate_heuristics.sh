@@ -14,8 +14,13 @@ echo "=========================================="
 echo "Evaluating Heuristics"
 echo "=========================================="
 
-# Compare against heuristic baselines
-python eval_heuristics.py --configs longcp wide --cases AL HS
+# Compare against heuristic baselines (delegate to private cogito module)
+if [[ -f "eval_heuristics.py" ]]; then
+  python eval_heuristics.py --configs longcp wide --cases AL HS
+else
+  PY_CMD='from cogito.tools.eval_heuristics import main, Args; import tyro; main(tyro.cli(Args))'
+  python -c "$PY_CMD" --configs longcp wide --cases AL HS
+fi
 
 echo ""
 echo "Heuristic evaluation completed!"
