@@ -7,7 +7,7 @@
 #
 # Options:
 #   --configs    Configuration types to evaluate (default: longcp wide)
-#   --cases      Test cases to run (default: AL HS)
+#   --cases      Test cases to run (default: all cases from config file)
 #
 # Examples:
 #   bash 3_evaluate_heuristics.sh
@@ -24,7 +24,7 @@ export PYTHONPATH="$(cd .. && pwd):$PYTHONPATH"
 
 # Default values
 CONFIGS="longcp wide"
-CASES="AL HS"
+CASES=""  # Empty means all cases from config file
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -61,12 +61,20 @@ echo "=========================================="
 echo "Evaluating Heuristics"
 echo "=========================================="
 echo "Configs: $CONFIGS"
-echo "Cases:   $CASES"
+if [[ -z "$CASES" ]]; then
+    echo "Cases:   all (from config file)"
+else
+    echo "Cases:   $CASES"
+fi
 echo ""
 
 # Compare against heuristic baselines using Cython-compiled module
 PY_CMD='from cogito.tools.eval_heuristics import main; main()'
-python -c "$PY_CMD" --configs $CONFIGS --cases $CASES
+if [[ -z "$CASES" ]]; then
+    python -c "$PY_CMD" --configs $CONFIGS
+else
+    python -c "$PY_CMD" --configs $CONFIGS --cases $CASES
+fi
 
 echo ""
 echo "Heuristic evaluation completed!"
