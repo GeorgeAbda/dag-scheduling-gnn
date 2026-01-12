@@ -59,7 +59,7 @@ if sc.get('seeds_file') and hasattr(a, 'train_seeds_file'):
 
 # Run training
 main(a)
-" 2>&1 | grep -v "req_divisor=" | grep -v "max_req_memory_mb=" | grep -v "max_req_cpu_cores="
+"
 
 echo ""
 echo "Training completed!"
