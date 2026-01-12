@@ -1,34 +1,26 @@
 #!/bin/bash
 # Evaluate Trained Agents
-# This script evaluates specialist agents (LongCP and Wide) on specified host configurations
+# This script evaluates specialist agents across different host regimes
 #
 # Usage:
-#   bash 4_evaluate_trained_agents.sh [OPTIONS]
+#   bash 4_evaluate_trained_agents.sh [--config CONFIG] [--regimes REGIME1 REGIME2 ...]
 #
 # Options:
-#   --host-specs PATH          Path to host specifications JSON file (required)
-#   --longcp-checkpoint PATH   Path to LongCP specialist checkpoint (required)
-#   --wide-checkpoint PATH     Path to Wide specialist checkpoint (optional)
-#   --longcp-seeds PATH        Path to LongCP seed config (default: data/rl_configs/train_long_cp_p08_seeds.json)
-#   --wide-seeds PATH          Path to Wide seed config (default: data/rl_configs/train_wide_p005_seeds.json)
-#   --output-dir PATH          Output directory (default: evals_custom)
-#   --device DEVICE            Device to use (default: cpu)
-#   --num-repeats N            Number of repeats per seed (default: 1)
-#   --max-seeds N              Maximum seeds to evaluate (default: 100)
+#   --config PATH      Path to evaluation config YAML file (default: data/rl_configs/eval_agents_config.yaml)
+#   --regimes          Regime labels to evaluate (default: all regimes from config)
+#   --device           Device to use: cpu or cuda (default: cpu)
+#   --repeats          Number of evaluation repeats per seed (default: from config)
+#   --out_dir          Output directory (default: from config)
 #
 # Examples:
-#   # Evaluate LongCP specialist on AL host config
-#   bash 4_evaluate_trained_agents.sh \
-#       --longcp-checkpoint logs/longcp_AL/ablation/per_variant/hetero/hetero_best.pt \
-#       --host-specs data/host_specs_AL.json \
-#       --output-dir evals_custom/AL
+#   # Evaluate all regimes with default config
+#   bash 4_evaluate_trained_agents.sh
 #
-#   # Evaluate both specialists
-#   bash 4_evaluate_trained_agents.sh \
-#       --longcp-checkpoint logs/longcp_AL/ablation/per_variant/hetero/hetero_best.pt \
-#       --wide-checkpoint logs/wide_AL/ablation/per_variant/hetero/hetero_best.pt \
-#       --host-specs data/host_specs_AL.json \
-#       --output-dir evals_custom/AL
+#   # Evaluate specific regimes
+#   bash 4_evaluate_trained_agents.sh --regimes AL HS
+#
+#   # Use custom config
+#   bash 4_evaluate_trained_agents.sh --config my_eval_config.yaml
 
 set -e
 
@@ -39,57 +31,41 @@ cd "$SCRIPT_DIR"
 export PYTHONPATH="$(cd .. && pwd):$PYTHONPATH"
 
 # Default values
-LONGCP_SEEDS="data/rl_configs/train_long_cp_p08_seeds.json"
-WIDE_SEEDS="data/rl_configs/train_wide_p005_seeds.json"
-OUTPUT_DIR="evals_custom"
-DEVICE="cpu"
-NUM_REPEATS="1"
-MAX_SEEDS="100"
-HOST_SPECS=""
-LONGCP_CHECKPOINT=""
-WIDE_CHECKPOINT=""
+CONFIG=""
+REGIMES=""
+DEVICE=""
+REPEATS=""
+OUT_DIR=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --host-specs)
-            HOST_SPECS="$2"
+        --config)
+            CONFIG="$2"
             shift 2
             ;;
-        --longcp-checkpoint)
-            LONGCP_CHECKPOINT="$2"
-            shift 2
-            ;;
-        --wide-checkpoint)
-            WIDE_CHECKPOINT="$2"
-            shift 2
-            ;;
-        --longcp-seeds)
-            LONGCP_SEEDS="$2"
-            shift 2
-            ;;
-        --wide-seeds)
-            WIDE_SEEDS="$2"
-            shift 2
-            ;;
-        --output-dir)
-            OUTPUT_DIR="$2"
-            shift 2
+        --regimes)
+            shift
+            REGIMES=""
+            while [[ $# -gt 0 ]] && [[ ! "$1" =~ ^-- ]]; do
+                REGIMES="$REGIMES $1"
+                shift
+            done
             ;;
         --device)
             DEVICE="$2"
             shift 2
             ;;
-        --num-repeats)
-            NUM_REPEATS="$2"
+        --repeats)
+            REPEATS="$2"
             shift 2
             ;;
-        --max-seeds)
-            MAX_SEEDS="$2"
+        --out_dir)
+            OUT_DIR="$2"
             shift 2
             ;;
         --help)
-            head -n 30 "$0" | grep "^#" | sed 's/^# \?//'
+            head -n 23 "$0" | grep "^#" | sed 's/^# \?//'
             exit 0
             ;;
         *)
@@ -100,60 +76,39 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Validate required arguments
-if [[ -z "$HOST_SPECS" ]]; then
-    echo "Error: --host-specs is required"
-    echo "Run with --help for usage information"
-    exit 1
-fi
-
-if [[ -z "$LONGCP_CHECKPOINT" ]] && [[ -z "$WIDE_CHECKPOINT" ]]; then
-    echo "Error: At least one of --longcp-checkpoint or --wide-checkpoint is required"
-    echo "Run with --help for usage information"
-    exit 1
-fi
-
 echo "=========================================="
 echo "Evaluating Trained Agents"
 echo "=========================================="
-echo "Host specs:     $HOST_SPECS"
-echo "Output dir:     $OUTPUT_DIR"
-echo "Device:         $DEVICE"
-echo "Num repeats:    $NUM_REPEATS"
-echo "Max seeds:      $MAX_SEEDS"
-echo "=========================================="
-echo ""
 
-# Build evaluation command based on which checkpoints are provided (delegate to private cogito)
+# Build command
 PY_CMD='from cogito.tools.eval_agents import main; main()'
-EVAL_CMD="python -c \"$PY_CMD\""
-EVAL_CMD="$EVAL_CMD --host-specs-path $HOST_SPECS"
-EVAL_CMD="$EVAL_CMD --device $DEVICE"
-EVAL_CMD="$EVAL_CMD --eval-repeats-per-seed $NUM_REPEATS"
+CMD="python -c \"$PY_CMD\""
 
-if [[ -n "$LONGCP_CHECKPOINT" ]]; then
-    EVAL_CMD="$EVAL_CMD --longcp-ckpt $LONGCP_CHECKPOINT"
-    EVAL_CMD="$EVAL_CMD --longcp-config $LONGCP_SEEDS"
-    echo "LongCP checkpoint: $LONGCP_CHECKPOINT"
+if [[ -n "$CONFIG" ]]; then
+    CMD="$CMD --config $CONFIG"
 fi
 
-if [[ -n "$WIDE_CHECKPOINT" ]]; then
-    EVAL_CMD="$EVAL_CMD --wide-ckpt $WIDE_CHECKPOINT"
-    EVAL_CMD="$EVAL_CMD --wide-config $WIDE_SEEDS"
-    echo "Wide checkpoint:   $WIDE_CHECKPOINT"
+if [[ -n "$REGIMES" ]]; then
+    CMD="$CMD --regimes $REGIMES"
 fi
 
-EVAL_CMD="$EVAL_CMD --out-csv ${OUTPUT_DIR}/hetero_eval.csv"
+if [[ -n "$DEVICE" ]]; then
+    CMD="$CMD --device $DEVICE"
+fi
 
-echo ""
+if [[ -n "$REPEATS" ]]; then
+    CMD="$CMD --repeats $REPEATS"
+fi
+
+if [[ -n "$OUT_DIR" ]]; then
+    CMD="$CMD --out_dir $OUT_DIR"
+fi
+
 echo "Running evaluation..."
-# Suppress verbose output (req_div_mem messages)
-eval $EVAL_CMD 2>&1 | grep -v "req_div_mem=" | grep -v "req_div_core="
+echo ""
+eval $CMD
 
 echo ""
-echo "✓ Evaluation complete"
-
 echo "=========================================="
-echo "Agent evaluation completed!"
-echo "Results saved to: $OUTPUT_DIR"
+echo "Evaluation completed!"
 echo "=========================================="
