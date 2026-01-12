@@ -65,7 +65,7 @@ echo "Cases:   $CASES"
 echo ""
 
 # Compare against heuristic baselines using Cython-compiled module
-PY_CMD='from cogito.tools.eval_heuristics import main, Args; import tyro; main(tyro.cli(Args))'
+PY_CMD='from cogito.tools.eval_heuristics import main; main()'
 python -c "$PY_CMD" --configs $CONFIGS --cases $CASES
 
 echo ""

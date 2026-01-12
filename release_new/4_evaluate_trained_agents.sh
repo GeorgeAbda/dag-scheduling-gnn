@@ -125,7 +125,7 @@ echo "=========================================="
 echo ""
 
 # Build evaluation command based on which checkpoints are provided (delegate to private cogito)
-PY_CMD='from cogito.tools.eval_hetero_agents_over_seed_configs import main, Args; import tyro; main(tyro.cli(Args))'
+PY_CMD='from cogito.tools.eval_agents import main; main()'
 EVAL_CMD="python -c \"$PY_CMD\""
 EVAL_CMD="$EVAL_CMD --host-specs-path $HOST_SPECS"
 EVAL_CMD="$EVAL_CMD --device $DEVICE"
