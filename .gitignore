@@ -1,4 +1,4 @@
-# Python - PROTECT ALL PYTHON CODE
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -20,10 +20,6 @@ wheels/
 .installed.cfg
 *.egg
 
-# Protect ALL Python files in the entire repository
-*.py
-!cogito/__init__.py
-
 # Private scheduler library (copyrighted)
 scheduler/**/*.py
 scheduler/**/*.pyc
@@ -38,6 +34,12 @@ cogito/**/*.pyc
 cogito/**/*.pdf
 cogito/**/*.backup
 cogito/**/.DS_Store
+
+# Protect all Python code in release_new (keep only shell scripts, configs, data)
+release_new/**/*.py
+!release_new/configs/
+!release_new/data/
+scripts/**/*.py
 
 # Virtual environments
 venv/
