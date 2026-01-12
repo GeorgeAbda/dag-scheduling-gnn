@@ -20,8 +20,13 @@ CONFIG="${1:-configs/train_wide_specialist.yaml}"
 echo "Using configuration: $CONFIG"
 echo ""
 
-# Train wide specialist
-python run_training.py --config "$CONFIG"
+# Train specialist (use delegator if present, otherwise fallback to private module)
+if [[ -f "run_training.py" ]]; then
+  python run_training.py --config "$CONFIG"
+else
+  PY_CMD='from cogito.gnn_deeprl_model.ablation_gnn_traj_main import main, Args; import tyro; main(tyro.cli(Args))'
+  python -c "$PY_CMD" --config "$CONFIG"
+fi
 
 echo ""
 echo "Training completed!"

@@ -124,8 +124,9 @@ echo "Max seeds:      $MAX_SEEDS"
 echo "=========================================="
 echo ""
 
-# Build evaluation command based on which checkpoints are provided
-EVAL_CMD="python ../scripts/eval_hetero_agents_over_seed_configs.py"
+# Build evaluation command based on which checkpoints are provided (delegate to private cogito)
+PY_CMD='from cogito.tools.eval_hetero_agents_over_seed_configs import main, Args; import tyro; main(tyro.cli(Args))'
+EVAL_CMD="python -c \"$PY_CMD\""
 EVAL_CMD="$EVAL_CMD --host-specs-path $HOST_SPECS"
 EVAL_CMD="$EVAL_CMD --device $DEVICE"
 EVAL_CMD="$EVAL_CMD --eval-repeats-per-seed $NUM_REPEATS"
