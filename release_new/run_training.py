@@ -55,6 +55,7 @@ def config_to_args(cfg):
     a.wide_config = d.get('wide_config')
     s = cfg.get('seed_control', {})
     a.training_seed_mode = s.get('mode', a.training_seed_mode)
+    a.train_seeds_file = s.get('seeds_file')
     v = cfg.get('variant', {})
     a.train_only_variant = v.get('name', a.train_only_variant)
     tr = cfg.get('trajectory', {})
