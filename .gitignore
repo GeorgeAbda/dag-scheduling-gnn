@@ -37,6 +37,9 @@ cogito/**/*.pdf
 cogito/**/*.backup
 cogito/**/.DS_Store
 
+# Allow minimal Python delegators in release_new
+!release_new/run_training.py
+
 # Exclude adversarial and robustness code (private research)
 cogito/gnn_deeprl_model/adversarial/
 cogito/gnn_deeprl_model/robustness/
