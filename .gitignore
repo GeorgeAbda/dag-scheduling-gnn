@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+!cogito/**/*.so
 .Python
 build/
 develop-eggs/
@@ -27,19 +28,18 @@ scheduler/**/*.pdf
 scheduler/**/*.backup
 !scheduler/README.md
 
-# Private cogito library (all Python code protected)
-cogito/**/*.py
+# Cogito library - selective compilation with Cython
+# Core algorithms compiled to C extensions (.so files)
+# Some directories excluded from public repo
 cogito/**/*.pyc
-!cogito/__init__.py
+cogito/**/__pycache__/
 cogito/**/*.pdf
 cogito/**/*.backup
 cogito/**/.DS_Store
 
-# Protect all Python code in release_new (keep only shell scripts, configs, data)
-release_new/**/*.py
-!release_new/configs/
-!release_new/data/
-scripts/**/*.py
+# Exclude adversarial and robustness code (private research)
+cogito/gnn_deeprl_model/adversarial/
+cogito/gnn_deeprl_model/robustness/
 
 # Virtual environments
 venv/
